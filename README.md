@@ -4,7 +4,7 @@ A Firefox extension for learning languages with real content. Select a word on a
 
 > Read → select an unknown word → understand it → save it to Anki → review later.
 
-**Status:** v0.2: web pages, automatic translation, dictionaries, Anki integration. YouTube and Netflix subtitles are next (see [Roadmap](#roadmap)).
+**Status:** v0.3: web pages, YouTube subtitles, automatic translation, dictionaries, Anki integration. Netflix is next (see [Roadmap](#roadmap)).
 
 ## Features
 
@@ -15,6 +15,7 @@ A Firefox extension for learning languages with real content. Select a word on a
 - 29 languages, auto-detection of the source language
 - Pluggable translators: MyMemory (free, no key), DeepL (API key), LibreTranslate (self-hosted)
 - Dictionaries: Free Dictionary (English IPA and audio), Wiktionary (most languages), Tatoeba (example sentences)
+- **YouTube:** click any word in the subtitles. The video pauses and the card opens. The subtitle line is saved as the sentence, with a link to the video at that moment
 - Light and dark theme, keyboard shortcuts, context menu, per-site disable
 
 ## Install (development)
@@ -62,6 +63,12 @@ You can find the UUID in `about:debugging` next to the extension ("Internal UUID
 | Edit fields | <kbd>E</kbd> |
 | Close | <kbd>Esc</kbd> |
 
+### YouTube
+
+Turn on subtitles in the player (any track, including auto-generated and auto-translated ones), then click a word. Shift+click a second word to look up the phrase between the two. The card works in fullscreen too. The video resumes when the card closes; you can turn pausing and resuming off in settings.
+
+Saved notes get the subtitle line as the sentence, a Source link like `https://www.youtube.com/watch?v=…&t=83s` titled "Video title (1:23)", and the tag `lc::youtube`. The source language comes from the selected subtitle track.
+
 Global shortcuts can be changed in `about:addons` → ⚙ → Manage Extension Shortcuts.
 
 ## Project structure
@@ -103,5 +110,4 @@ Selected text and the surrounding sentence go to the translation and dictionary 
 
 ## Roadmap
 
-- **v0.3:** YouTube: clickable subtitles, pause on click, save subtitle line, timestamp and video link
 - **v0.4:** Netflix, audio clips and screenshots, more card templates, furigana for Japanese, AI translation provider

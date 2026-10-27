@@ -54,7 +54,42 @@
       this.card = h("div", { class: "card", role: "dialog", "aria-label": "Language Companion", hidden: true });
       this.shadow.append(h("style", {}, css), this.trigger, this.card);
       this.setTheme(theme);
-      document.documentElement.append(this.host);
+      this.attach();
+    }
+
+    // In fullscreen only the fullscreen element is rendered, so the UI has to live inside it.
+    attach() {
+      const container = document.fullscreenElement ?? document.documentElement;
+      if (this.host.parentElement !== container) container.append(this.host);
+    }
+
+    // The visible area in the host's coordinate space.
+    bounds() {
+      const container = this.host.parentElement;
+      if (container === document.documentElement) {
+        return {
+          left: window.scrollX,
+          top: window.scrollY,
+          right: window.scrollX + container.clientWidth,
+          bottom: window.scrollY + window.innerHeight,
+        };
+      }
+      return { left: 0, top: 0, right: container.clientWidth, bottom: container.clientHeight };
+    }
+
+    // Converts a viewport rect (getBoundingClientRect) to the host's coordinate space.
+    toLocal(rect) {
+      const container = this.host.parentElement;
+      const origin =
+        container === document.documentElement
+          ? { left: -window.scrollX, top: -window.scrollY }
+          : container.getBoundingClientRect();
+      return {
+        left: rect.left - origin.left,
+        right: rect.right - origin.left,
+        top: rect.top - origin.top,
+        bottom: rect.bottom - origin.top,
+      };
     }
 
     get isOpen() {
@@ -76,9 +111,11 @@
     // --- Trigger ---------------------------------------------------------------
 
     showTrigger(rect) {
+      this.attach();
       this.trigger.hidden = false;
-      const left = Math.min(rect.right + 4, window.innerWidth - 32) + window.scrollX;
-      const top = rect.bottom + 4 + window.scrollY;
+      const local = this.toLocal(rect);
+      const left = Math.min(local.right + 4, this.bounds().right - 32);
+      const top = local.bottom + 4;
       this.trigger.style.left = `${left}px`;
       this.trigger.style.top = `${top}px`;
     }
@@ -89,10 +126,13 @@
 
     // --- Card state ------------------------------------------------------------
 
-    open(rect, word) {
+    // context: optional { pageUrl, pageTitle, tags } overriding the current page, e.g. a video timestamp.
+    open(rect, word, context = {}) {
       this.hideTrigger();
-      this.anchor = { left: rect.left + window.scrollX, top: rect.top + window.scrollY, bottom: rect.bottom + window.scrollY };
+      this.attach();
+      this.anchor = this.toLocal(rect);
       this.state = {
+        context,
         status: "loading",
         word,
         result: null,
@@ -160,8 +200,9 @@
         sentence: result.sentence,
         sentenceTranslation: result.sentenceTranslation,
         example: result.examples[selectedExample] ?? null,
-        pageUrl: location.href,
-        pageTitle: document.title,
+        pageUrl: this.state.context.pageUrl ?? location.href,
+        pageTitle: this.state.context.pageTitle ?? document.title,
+        tags: this.state.context.tags ?? [],
         sourceLang: result.sourceLang,
         targetLang: result.targetLang,
         deck,
@@ -392,14 +433,13 @@
     position() {
       if (!this.anchor) return;
       const height = this.card.offsetHeight;
-      const viewportTop = window.scrollY;
-      const viewportBottom = viewportTop + window.innerHeight;
+      const bounds = this.bounds();
       let top = this.anchor.bottom + GAP;
-      if (top + height > viewportBottom && this.anchor.top - GAP - height >= viewportTop) {
+      if (top + height > bounds.bottom && this.anchor.top - GAP - height >= bounds.top) {
         top = this.anchor.top - GAP - height;
       }
-      const maxLeft = window.scrollX + document.documentElement.clientWidth - CARD_WIDTH - GAP;
-      const left = Math.max(window.scrollX + GAP, Math.min(this.anchor.left, maxLeft));
+      const maxLeft = bounds.right - CARD_WIDTH - GAP;
+      const left = Math.max(bounds.left + GAP, Math.min(this.anchor.left, maxLeft));
       this.card.style.top = `${top}px`;
       this.card.style.left = `${left}px`;
     }

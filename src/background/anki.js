@@ -69,7 +69,7 @@ export function createAnkiClient({ url, key, fetch: fetchImpl = globalThis.fetch
 
 // Builds an AnkiConnect note from the card the user saw (and maybe edited).
 // card: { word, translation, definitions[], ipa, audioUrl, sentence, sentenceTranslation,
-//         example: {text, translation}|null, pageUrl, pageTitle, sourceLang, targetLang, deck }
+//         example: {text, translation}|null, pageUrl, pageTitle, sourceLang, targetLang, deck, tags? }
 export function buildNote(card, settings) {
   const values = {
     Word: escapeHtml(card.word),
@@ -102,7 +102,7 @@ export function buildNote(card, settings) {
     deckName: card.deck || settings.deck,
     modelName,
     fields,
-    tags: [...settings.tags.split(/\s+/).filter(Boolean), `lc::${card.sourceLang}`],
+    tags: [...settings.tags.split(/\s+/).filter(Boolean), `lc::${card.sourceLang}`, ...(card.tags ?? [])],
     options: { allowDuplicate: false, duplicateScope: "deck" },
   };
 

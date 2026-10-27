@@ -3,10 +3,12 @@ import { translators, dictionaries, exampleSources } from "./providers/index.js"
 
 const { languages } = globalThis.LC;
 
-// Picks the source language: explicit request > setting > detection > page lang > English.
+// Picks the source language: explicit request > known content language (e.g. the subtitle
+// track) > setting > detection > page lang > English.
 export async function resolveSourceLang(req, settings, detectLanguage) {
-  const requested = req.sourceLang && req.sourceLang !== "auto" ? req.sourceLang : settings.sourceLang;
-  const explicit = languages.normalize(requested);
+  const requested = req.sourceLang && req.sourceLang !== "auto" ? req.sourceLang : null;
+  const explicit =
+    languages.normalize(requested) ?? languages.normalize(req.contentLang) ?? languages.normalize(settings.sourceLang);
   if (explicit) return explicit;
 
   if (detectLanguage) {

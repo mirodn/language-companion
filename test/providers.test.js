@@ -55,6 +55,13 @@ test("resolveSourceLang order: request, setting, detection, page language", asyn
   assert.equal(await resolveSourceLang({ text: "x", pageLang: "it-IT" }, { sourceLang: "auto" }, unreliable), "it");
 });
 
+test("resolveSourceLang prefers the subtitle track language over settings", async () => {
+  assert.equal(await resolveSourceLang({ contentLang: "ja" }, { sourceLang: "de" }), "ja");
+  assert.equal(await resolveSourceLang({ contentLang: "ja", sourceLang: "ko" }, { sourceLang: "de" }), "ko");
+  // Unsupported track languages fall back to the setting.
+  assert.equal(await resolveSourceLang({ contentLang: "sw" }, { sourceLang: "de" }), "de");
+});
+
 test("lookup merges providers and tolerates failures", async () => {
   const responses = {
     "api.mymemory.translated.net": fixture("mymemory"),

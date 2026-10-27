@@ -36,6 +36,10 @@
     fieldMap: {},
     tags: "language-companion",
     saveAudio: true,
+
+    youtubeEnabled: true,
+    youtubePauseOnClick: true,
+    youtubeResumeOnClose: true,
   });
 
   async function getSettings() {

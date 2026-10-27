@@ -8,6 +8,7 @@
   let lookupId = 0;
   // Last lookup request, so changing the source language can repeat it.
   let lastRequest = null;
+  const closeListeners = [];
 
   async function send(type, payload = {}) {
     const response = await browser.runtime.sendMessage({ type, ...payload });
@@ -33,7 +34,10 @@
           checkDuplicate(card);
         },
         onCardChanged: (card) => checkDuplicate(card),
-        onClose: () => (lookupId += 1),
+        onClose: () => {
+          lookupId += 1;
+          closeListeners.forEach((listener) => listener());
+        },
       },
     });
     return ui;
@@ -49,11 +53,12 @@
     await runLookup(request, { autoAdd });
   }
 
+  // request: { text, sentence, rect, pageLang, sourceLang?, contentLang?, context? }
   async function runLookup(request, { autoAdd = false } = {}) {
     lastRequest = request;
     const id = ++lookupId;
     const card = await getUI();
-    card.open(request.rect, request.text);
+    card.open(request.rect, request.text, request.context);
 
     let result;
     try {
@@ -62,6 +67,7 @@
         sentence: request.sentence,
         pageLang: request.pageLang,
         sourceLang: request.sourceLang,
+        contentLang: request.contentLang,
       });
     } catch (error) {
       if (id === lookupId) card.setLookupError(error.message);
@@ -135,7 +141,8 @@
     true,
   );
 
-  document.addEventListener(
+  // Window capture runs before page handlers, so site shortcuts (e.g. YouTube's) don't fire.
+  window.addEventListener(
     "keydown",
     (event) => {
       if (ui?.handleKey(event)) {
@@ -145,6 +152,11 @@
     },
     true,
   );
+
+  document.addEventListener("fullscreenchange", () => {
+    ui?.hideTrigger();
+    ui?.close();
+  });
 
   browser.runtime.onMessage.addListener((message) => {
     if (message?.type !== MSG.OPEN_CARD || !settings?.enabled) return;
@@ -162,4 +174,14 @@
   });
 
   LC.settings.getSettings().then((loaded) => (settings = loaded));
+
+  // Used by site integrations such as youtube.js.
+  LC.companion = {
+    lookup: runLookup,
+    onClose: (listener) => closeListeners.push(listener),
+    get settings() {
+      return settings;
+    },
+    enabledHere,
+  };
 })();

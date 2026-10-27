@@ -72,6 +72,11 @@ test("buildNote skips audio when disabled and handles a single definition", () =
   assert.equal(note.audio, undefined);
 });
 
+test("buildNote appends card tags, e.g. from YouTube", () => {
+  const note = buildNote({ ...card, tags: ["lc::youtube"] }, settings);
+  assert.deepEqual(note.tags, ["language-companion", "extra", "lc::de", "lc::youtube"]);
+});
+
 test("duplicateQuery escapes Anki search syntax", () => {
   assert.equal(duplicateQuery({ ...card, word: 'a_"b"' }, settings), '"deck:German::Vocab" "Word:a\\_&quot;b&quot;"');
 });

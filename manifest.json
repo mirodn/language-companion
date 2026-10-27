@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Language Companion",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Look up words while you browse and save them to Anki with one click.",
   "browser_specific_settings": {
     "gecko": {
@@ -54,6 +54,18 @@
         "src/content/selection.js",
         "src/content/popup-ui.js",
         "src/content/content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.youtube.com/*"
+      ],
+      "js": [
+        "src/content/youtube.js"
+      ],
+      "css": [
+        "src/content/youtube.css"
       ],
       "run_at": "document_idle"
     }

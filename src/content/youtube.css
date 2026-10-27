@@ -1,0 +1,12 @@
+/* Injected into YouTube pages to style clickable caption words. */
+
+.lc-yt-word {
+  cursor: pointer;
+  pointer-events: auto;
+  border-radius: 3px;
+  transition: background-color 0.1s;
+}
+
+.lc-yt-word:hover {
+  background-color: rgba(91, 140, 255, 0.6);
+}
