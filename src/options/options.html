@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Language Companion Settings</title>
+    <link rel="stylesheet" href="../shared/page.css" />
+    <link rel="stylesheet" href="options.css" />
+    <script src="../shared/messages.js"></script>
+    <script src="../shared/languages.js"></script>
+    <script src="../shared/settings.js"></script>
+    <script type="module" src="options.js"></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Language Companion</h1>
+        <p class="muted">Changes are saved automatically. <span id="saved" class="success" hidden>Saved ✓</span></p>
+      </header>
+
+      <section>
+        <h2>Languages</h2>
+        <div class="row">
+          <label for="sourceLang">Language you are learning</label>
+          <select id="sourceLang" data-setting="sourceLang"></select>
+        </div>
+        <div class="row">
+          <label for="targetLang">Translate into</label>
+          <select id="targetLang" data-setting="targetLang"></select>
+        </div>
+      </section>
+
+      <section>
+        <h2>Anki</h2>
+        <p class="muted">
+          Requires Anki Desktop with the
+          <a href="https://ankiweb.net/shared/info/2055492159" target="_blank" rel="noreferrer">AnkiConnect</a> add-on.
+        </p>
+        <div class="row">
+          <label for="ankiUrl">AnkiConnect URL</label>
+          <div class="inline">
+            <input type="url" id="ankiUrl" data-setting="ankiUrl" />
+            <button type="button" class="grant" data-for="ankiUrl" hidden>Allow access</button>
+          </div>
+        </div>
+        <div class="row">
+          <label for="ankiKey">AnkiConnect API key <span class="muted">(optional)</span></label>
+          <input type="password" id="ankiKey" data-setting="ankiKey" autocomplete="off" />
+        </div>
+        <div class="row">
+          <span></span>
+          <div class="inline">
+            <button type="button" id="test-anki" class="primary">Test connection</button>
+            <span id="anki-status" class="muted"></span>
+          </div>
+        </div>
+        <div class="row">
+          <label for="deck">Default deck</label>
+          <select id="deck" data-setting="deck"></select>
+        </div>
+        <div class="row">
+          <span>Note type</span>
+          <div>
+            <label class="choice"><input type="radio" name="noteTypeMode" value="builtin" data-setting="noteTypeMode" /> Built-in "Language Companion" note type <span class="muted">(created automatically)</span></label>
+            <label class="choice"><input type="radio" name="noteTypeMode" value="mapped" data-setting="noteTypeMode" /> Use one of my note types</label>
+          </div>
+        </div>
+        <div id="mapping" hidden>
+          <div class="row">
+            <label for="mappedModel">Note type</label>
+            <select id="mappedModel" data-setting="mappedModel"></select>
+          </div>
+          <table>
+            <thead>
+              <tr><th>Language Companion field</th><th>Your field</th></tr>
+            </thead>
+            <tbody id="field-map"></tbody>
+          </table>
+          <p class="muted small">Anki detects duplicates using the first field of a note type, so map "Word" to it.</p>
+        </div>
+        <div class="row">
+          <label for="tags">Tags <span class="muted">(space-separated)</span></label>
+          <input type="text" id="tags" data-setting="tags" />
+        </div>
+        <div class="row">
+          <span></span>
+          <label class="choice"><input type="checkbox" data-setting="saveAudio" /> Save pronunciation audio when available</label>
+        </div>
+      </section>
+
+      <section>
+        <h2>Translation &amp; dictionaries</h2>
+        <div class="row">
+          <label for="translator">Translator</label>
+          <select id="translator" data-setting="translator">
+            <option value="mymemory">MyMemory (free, no key)</option>
+            <option value="deepl">DeepL (API key)</option>
+            <option value="libretranslate">LibreTranslate (self-hosted)</option>
+          </select>
+        </div>
+        <div class="row" data-show-for="mymemory">
+          <label for="myMemoryEmail">Email for MyMemory <span class="muted">(optional, raises daily limit)</span></label>
+          <input type="email" id="myMemoryEmail" data-setting="myMemoryEmail" />
+        </div>
+        <div class="row" data-show-for="deepl">
+          <label for="deeplKey">DeepL API key</label>
+          <input type="password" id="deeplKey" data-setting="deeplKey" autocomplete="off" />
+        </div>
+        <div class="row" data-show-for="libretranslate">
+          <label for="libreUrl">LibreTranslate URL</label>
+          <div class="inline">
+            <input type="url" id="libreUrl" data-setting="libreUrl" placeholder="http://localhost:5000" />
+            <button type="button" class="grant" data-for="libreUrl" hidden>Allow access</button>
+          </div>
+        </div>
+        <div class="row" data-show-for="libretranslate">
+          <label for="libreKey">LibreTranslate API key <span class="muted">(optional)</span></label>
+          <input type="password" id="libreKey" data-setting="libreKey" autocomplete="off" />
+        </div>
+        <div class="row">
+          <span></span>
+          <label class="choice"><input type="checkbox" data-setting="translateSentence" /> Also translate the surrounding sentence</label>
+        </div>
+        <div class="row">
+          <span>Sources</span>
+          <div>
+            <label class="choice"><input type="checkbox" data-setting="providers.freedictionary" /> Free Dictionary <span class="muted">(English: IPA, audio, definitions)</span></label>
+            <label class="choice"><input type="checkbox" data-setting="providers.wiktionary" /> Wiktionary <span class="muted">(definitions in English, most languages)</span></label>
+            <label class="choice"><input type="checkbox" data-setting="providers.tatoeba" /> Tatoeba <span class="muted">(example sentences, can be slow)</span></label>
+          </div>
+        </div>
+        <div class="row">
+          <label for="maxDefinitions">Definitions shown</label>
+          <input type="number" id="maxDefinitions" data-setting="maxDefinitions" min="1" max="10" />
+        </div>
+        <div class="row">
+          <label for="maxExamples">Examples shown</label>
+          <input type="number" id="maxExamples" data-setting="maxExamples" min="0" max="10" />
+        </div>
+        <div class="row">
+          <span></span>
+          <div class="inline">
+            <button type="button" id="clear-cache">Clear lookup cache</button>
+            <span id="cache-status" class="muted"></span>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Behavior</h2>
+        <div class="row">
+          <label for="triggerMode">When text is selected</label>
+          <select id="triggerMode" data-setting="triggerMode">
+            <option value="icon">Show a small button</option>
+            <option value="instant">Open the card immediately</option>
+            <option value="shortcut">Do nothing (use shortcut or context menu)</option>
+          </select>
+        </div>
+        <div class="row">
+          <label for="theme">Theme</label>
+          <select id="theme" data-setting="theme">
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </div>
+        <div class="row">
+          <label for="maxSelectionLength">Max. selection length</label>
+          <input type="number" id="maxSelectionLength" data-setting="maxSelectionLength" min="10" max="1000" />
+        </div>
+        <div class="row">
+          <label for="disabledSites">Disabled on these sites <span class="muted">(one hostname per line)</span></label>
+          <textarea id="disabledSites" data-setting="disabledSites" rows="4" placeholder="mail.example.com"></textarea>
+        </div>
+      </section>
+
+      <section>
+        <h2>Keyboard shortcuts</h2>
+        <table class="shortcuts">
+          <tbody>
+            <tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd></td><td>Look up the selection</td></tr>
+            <tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd></td><td>Look up and add to Anki right away</td></tr>
+            <tr><td><kbd>Enter</kbd></td><td>Add to Anki (card open)</td></tr>
+            <tr><td><kbd>P</kbd></td><td>Play pronunciation (card open)</td></tr>
+            <tr><td><kbd>E</kbd></td><td>Edit fields (card open)</td></tr>
+            <tr><td><kbd>Esc</kbd></td><td>Close the card</td></tr>
+          </tbody>
+        </table>
+        <p class="muted small">Change the global shortcuts in about:addons → ⚙ → Manage Extension Shortcuts.</p>
+      </section>
+    </main>
+  </body>
+</html>

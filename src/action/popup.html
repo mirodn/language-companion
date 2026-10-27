@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../shared/page.css" />
+    <link rel="stylesheet" href="popup.css" />
+    <script src="../shared/messages.js"></script>
+    <script src="../shared/languages.js"></script>
+    <script src="../shared/settings.js"></script>
+    <script type="module" src="popup.js"></script>
+  </head>
+  <body>
+    <header>
+      <strong>Language Companion</strong>
+      <a href="#" id="open-options">Settings</a>
+    </header>
+
+    <p id="anki-status"><span class="dot"></span><span class="text">Checking Anki…</span></p>
+
+    <div class="pair">
+      <select id="source-lang" title="Language you are learning"></select>
+      <span class="muted">→</span>
+      <select id="target-lang" title="Translate into"></select>
+    </div>
+
+    <label class="toggle"><input type="checkbox" id="site-enabled" /> <span id="site-label">Enabled on this site</span></label>
+    <label class="toggle"><input type="checkbox" id="enabled" /> Enabled everywhere</label>
+
+    <p class="muted hint">Select a word on any page, or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>.</p>
+  </body>
+</html>

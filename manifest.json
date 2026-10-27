@@ -1,0 +1,84 @@
+{
+  "manifest_version": 3,
+  "name": "Language Companion",
+  "version": "0.2.0",
+  "description": "Look up words while you browse and save them to Anki with one click.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "language-companion@mirodn",
+      "strict_min_version": "128.0",
+      "data_collection_permissions": {
+        "required": [
+          "websiteContent"
+        ]
+      }
+    }
+  },
+  "icons": {
+    "48": "icons/icon.svg",
+    "96": "icons/icon.svg"
+  },
+  "permissions": [
+    "storage",
+    "menus",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:8765/*",
+    "http://localhost:8765/*",
+    "https://api.mymemory.translated.net/*",
+    "https://api-free.deepl.com/*",
+    "https://api.deepl.com/*",
+    "https://en.wiktionary.org/*",
+    "https://api.dictionaryapi.dev/*",
+    "https://api.tatoeba.org/*"
+  ],
+  "optional_host_permissions": [
+    "*://*/*"
+  ],
+  "background": {
+    "scripts": [
+      "src/background/background.js"
+    ],
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "src/shared/messages.js",
+        "src/shared/languages.js",
+        "src/shared/settings.js",
+        "src/content/selection.js",
+        "src/content/popup-ui.js",
+        "src/content/content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Language Companion",
+    "default_popup": "src/action/popup.html",
+    "default_icon": "icons/icon.svg"
+  },
+  "options_ui": {
+    "page": "src/options/options.html",
+    "open_in_tab": true
+  },
+  "commands": {
+    "lookup-selection": {
+      "suggested_key": {
+        "default": "Alt+Shift+L"
+      },
+      "description": "Look up the selected text"
+    },
+    "lookup-and-add": {
+      "suggested_key": {
+        "default": "Alt+Shift+A"
+      },
+      "description": "Look up the selected text and add it to Anki"
+    }
+  }
+}

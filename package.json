@@ -1,0 +1,16 @@
+{
+  "name": "language-companion",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Firefox extension for learning languages while browsing, with Anki integration via AnkiConnect.",
+  "type": "module",
+  "scripts": {
+    "start": "web-ext run --source-dir . --browser-console --start-url https://en.wikipedia.org/wiki/House",
+    "lint": "web-ext lint --source-dir .",
+    "build": "web-ext build --source-dir . --overwrite-dest",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "devDependencies": {
+    "web-ext": "^8.3.0"
+  }
+}
