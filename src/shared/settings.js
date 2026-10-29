@@ -39,6 +39,8 @@
     youtubeEnabled: true,
     youtubePauseOnClick: true,
     youtubeResumeOnClose: true,
+    // Off by default: every subtitle line uses translator quota.
+    youtubeDualSubtitles: false,
   });
 
   async function getSettings() {

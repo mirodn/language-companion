@@ -80,6 +80,15 @@ export async function lookupTranslation(req, settings, ctx = {}) {
   };
 }
 
+// One line of text such as a subtitle: translation only. Not cached, so a long video doesn't push
+// word lookups out of the cache; youtube.js keeps its own cache per page.
+export async function translateLine(req, settings, ctx = {}) {
+  const { text, src, tgt } = await resolveLangs(req, settings, ctx);
+  if (src === tgt) return { translation: "", sourceLang: src };
+  const { translation } = await pickTranslator(settings, src, tgt).lookup({ text, src, tgt }, settings, ctx);
+  return { translation, sourceLang: src };
+}
+
 // IPA, audio, definitions, examples, base form and frequency from every enabled provider, in parallel.
 // A failing provider only adds an entry to `errors`.
 export async function lookupDetails(req, settings, ctx = {}) {

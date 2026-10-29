@@ -8,7 +8,7 @@ import { parse as parseFreeDictionary } from "../src/background/providers/freedi
 import { parse as parseTatoeba } from "../src/background/providers/tatoeba.js";
 import { parse as parseJisho } from "../src/background/providers/jisho.js";
 import wiktionary from "../src/background/providers/wiktionary.js";
-import { isPhrase, lookupDetails, lookupTranslation, resolveSourceLang } from "../src/background/lookup.js";
+import { isPhrase, lookupDetails, lookupTranslation, resolveSourceLang, translateLine } from "../src/background/lookup.js";
 import { createFrequency, frequencyLabel } from "../src/background/frequency.js";
 import "../src/shared/settings.js";
 import "../src/shared/furigana.js";
@@ -273,4 +273,19 @@ test("lookupDetails rates the base form's frequency and respects the setting", a
 
   const off = { ...DEFAULTS, providers: { ...DEFAULTS.providers, frequency: false } };
   assert.equal((await lookupDetails({ text: "chevaux", sourceLang: "fr" }, off, ctx)).frequency, null);
+});
+
+test("translateLine translates a subtitle line without caching it", async () => {
+  const urls = [];
+  const fetch = async (url) => {
+    urls.push(url);
+    return { ok: true, status: 200, json: async () => fixture("mymemory") };
+  };
+  const cache = { get: async () => assert.fail("no cache reads"), set: async () => assert.fail("no cache writes") };
+  const result = await translateLine({ text: "Je cours vite.", contentLang: "fr" }, DEFAULTS, { fetch, cache });
+  assert.deepEqual(result, { translation: "Haus", sourceLang: "fr" });
+  assert.equal(urls.length, 1);
+  // English subtitles are not translated into English.
+  assert.deepEqual(await translateLine({ text: "Hello there.", contentLang: "en" }, DEFAULTS, { fetch, cache }), { translation: "", sourceLang: "en" });
+  assert.equal(urls.length, 1);
 });

@@ -34,6 +34,9 @@ async function init() {
   $("#youtube-enabled").checked = settings.youtubeEnabled;
   $("#youtube-enabled").addEventListener("change", (e) => settingsStore.saveSettings({ youtubeEnabled: e.target.checked }));
 
+  $("#youtube-dual").checked = settings.youtubeDualSubtitles;
+  $("#youtube-dual").addEventListener("change", (e) => settingsStore.saveSettings({ youtubeDualSubtitles: e.target.checked }));
+
   $("#open-options").addEventListener("click", (e) => {
     e.preventDefault();
     browser.runtime.openOptionsPage();

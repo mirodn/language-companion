@@ -22,6 +22,7 @@ A Firefox extension for learning languages with real content. Select a word on a
 - **Word frequency** badge ("Top 1k" … "Top 20k", or "Rare") from bundled subtitle word lists, using the base form's rank. Japanese shows the JLPT level or "Common" instead. Saved notes get a tag such as `lc::freq::top-2k`
 - **Furigana** for Japanese words: readings over each kanji on the card, and in the Pronunciation field of the Anki note (shown on the back)
 - **YouTube:** click any word in the subtitles. The video pauses and the card opens. The subtitle line is saved as the sentence, with a link to the video at that moment
+- **Dual subtitles on YouTube** (optional): a translation of each subtitle line appears under it
 - A deck per language (e.g. Albanian words go to your Albanian deck), set in the settings
 - Light and dark theme, keyboard shortcuts, context menu, per-site disable (in settings)
 
@@ -90,6 +91,8 @@ If the test still fails, make sure Anki is running and the origin is not listed 
 Turn on subtitles in the player (any track, including auto-generated and auto-translated ones), then click a word. Shift+click a second word to look up the phrase between the two. The card works in fullscreen too. The video resumes when the card closes; you can turn pausing and resuming off in settings.
 
 Saved notes get the subtitle line as the sentence, a Source link like `https://www.youtube.com/watch?v=…&t=83s` titled "Video title (1:23)", and the tag `lc::youtube`. The source language comes from the selected subtitle track.
+
+**Dual subtitles:** turn on "Translation under YouTube subtitles" in the toolbar popup or the settings. Each line is translated with your translator, so it uses that translator's quota: MyMemory allows about 100 lines a day (about 1,000 with an email in the settings), DeepL Free about 500,000 characters a month. Auto-generated subtitles appear word by word; a line is translated once it has stayed on screen for a moment. English subtitles are not translated.
 
 Global shortcuts can be changed in `about:addons` → ⚙ → Manage Extension Shortcuts.
 

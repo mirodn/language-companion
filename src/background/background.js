@@ -1,7 +1,7 @@
 import "../shared/messages.js";
 import "../shared/settings.js";
 import { createAnkiClient, buildNote, duplicateQuery, resolveNoteType, NOTE_TYPE } from "./anki.js";
-import { lookupDetails, lookupTranslation } from "./lookup.js";
+import { lookupDetails, lookupTranslation, translateLine } from "./lookup.js";
 import { createFrequency } from "./frequency.js";
 import { getCached, setCached } from "./cache.js";
 import { flushQueue, loadLog, logAdded, queueNote, removeEntry } from "./word-log.js";
@@ -93,6 +93,10 @@ const lookupContext = {
 const handlers = {
   async [MSG.LOOKUP](message) {
     return lookupTranslation(message, await settingsStore.getSettings(), lookupContext);
+  },
+
+  async [MSG.TRANSLATE_LINE](message) {
+    return translateLine(message, await settingsStore.getSettings(), lookupContext);
   },
 
   async [MSG.LOOKUP_DETAILS](message) {

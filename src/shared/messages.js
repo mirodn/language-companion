@@ -8,6 +8,7 @@
     GET_CARD_CSS: "getCardCss",
     LOOKUP: "lookup",
     LOOKUP_DETAILS: "lookupDetails",
+    TRANSLATE_LINE: "translateLine",
     ANKI_STATUS: "ankiStatus",
     ANKI_DECKS: "ankiDecks",
     ANKI_MODELS: "ankiModels",
