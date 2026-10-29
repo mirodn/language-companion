@@ -66,6 +66,7 @@
         "https://www.youtube.com/*"
       ],
       "js": [
+        "src/content/peek.js",
         "src/content/youtube.js"
       ],
       "css": [

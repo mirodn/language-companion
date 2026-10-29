@@ -167,7 +167,7 @@
       Object.assign(this.state, {
         status: "ready",
         detailsLoading: true,
-        result: { ipa: "", reading: "", audioUrl: "", definitions: [], examples: [], ...result },
+        result: { ipa: "", reading: "", audioUrl: "", definitions: [], examples: [], kanji: [], ...result },
         selectedExample: -1,
       });
       this.render();
@@ -181,6 +181,7 @@
       result.reading ||= details.reading ?? "";
       result.audioUrl = details.audioUrl ?? "";
       result.base = details.base ?? null;
+      result.kanji = details.kanji ?? [];
       result.frequency = details.frequency ?? null;
       result.definitions = details.definitions ?? [];
       result.examples = details.examples ?? [];
@@ -230,6 +231,7 @@
         sentence: result.sentence,
         sentenceTranslation: result.sentenceTranslation,
         frequency: result.frequency?.label ?? "",
+        kanji: result.kanji.map(({ character, meanings }) => ({ character, meanings })),
         example: result.examples[selectedExample] ?? null,
         pageUrl: this.state.context.pageUrl ?? location.href,
         pageTitle: this.state.context.pageTitle ?? document.title,
@@ -376,6 +378,7 @@
               ),
             ),
           ),
+        this.renderKanji(),
         result.examples.length > 0 &&
           h(
             "div",
@@ -409,6 +412,25 @@
       const errors = this.state.result.errors.filter((error) => !/timed out/i.test(error));
       if (!errors.length) return null;
       return h("div", { class: "warnings", title: errors.join("\n") }, `Some sources failed: ${errors.join("; ")}`);
+    }
+
+    // 学 study; learning  ガク · まな.ぶ — one row per kanji of a Japanese word.
+    renderKanji() {
+      const { kanji } = this.state.result;
+      if (!kanji.length) return null;
+      return h(
+        "div",
+        { class: "section" },
+        h("div", { class: "label" }, "Kanji"),
+        kanji.map(({ character, meanings, on, kun }) =>
+          h(
+            "div",
+            { class: "kanji" },
+            h("span", { class: "kanji-char", lang: "ja" }, character),
+            h("span", {}, meanings, (on || kun) && h("span", { class: "muted", lang: "ja" }, `  ${[on, kun].filter(Boolean).join(" · ")}`)),
+          ),
+        ),
+      );
     }
 
     renderFrequency() {

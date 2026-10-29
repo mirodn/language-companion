@@ -19,13 +19,20 @@ A Firefox extension for learning **Japanese, Korean and Chinese** with real cont
 - **Reader:** toolbar popup → **Open in reader** (or right-click → Open in reader) shows the page's article in a clean, distraction-free view where every word is clickable, which helps most with Japanese and Chinese, where words have no spaces between them. Furigana on the page is kept
 - Phrases and sentences are only translated; dictionaries and example sentences are looked up for words and short expressions
 - Pluggable translators: MyMemory (free, no key), DeepL (API key), LibreTranslate (self-hosted)
-- Dictionaries: Jisho (Japanese readings and definitions), Wiktionary (Korean, Chinese in traditional spelling), Free Dictionary (English IPA and audio), Tatoeba (example sentences)
-- **Base form:** conjugated Japanese words show their dictionary form ("食べた → 食べる", from Jisho), and Korean nouns without their particle ("학교에 → 학교 · with the particle 에"). Click it (or press <kbd>B</kbd>) to look up and save the base form instead; the sentence keeps the word as written. Korean verb endings (갔어요 → 가다) are not covered yet
+- Dictionaries: Jisho (Japanese readings and definitions), KANJIDIC2 (kanji meanings), CC-CEDICT (Chinese), Wiktionary (Korean), Free Dictionary (English IPA and audio), Tatoeba (example sentences)
+- **Base form:** conjugated Japanese words show their dictionary form ("食べた → 食べる", from Jisho), and Korean nouns without their particle ("학교에 → 학교 · with the particle 에"). Click it (or press <kbd>B</kbd>) to look up and save the base form instead; the sentence keeps the word as written. and Korean verbs without their ending ("갔어요 → 가다", "공부했습니다 → 공부하다")
 - **Word frequency** badge: Japanese shows the JLPT level or "Common" (from Jisho); Korean and Chinese show "Top 1k" … "Top 20k" from bundled subtitle word lists, using the base form's rank. Saved notes get a tag such as `lc::freq::jlpt-n5` or `lc::freq::top-2k`
+- **Quick peek:** in the reader and on YouTube subtitles, hold <kbd>Shift</kbd> while pointing at a word to see its reading and main meaning in a small tooltip, without opening the card
+- **Kanji breakdown** for Japanese words (学校 → 学 study · 校 school) on the card and on the back of the Anki card, from KANJIDIC2 (built in, works offline)
+- **Chinese dictionary:** CC-CEDICT is built in (works offline) for definitions and **pinyin** in simplified and traditional spelling; characters with several readings (行 háng / xíng) list each one
 - **Furigana** for Japanese words: readings over each kanji on the card, and in the Pronunciation field of the Anki note (shown on the back)
 - **YouTube:** click any word in the subtitles. The video pauses and the card opens. Only subtitles in your languages are clickable. The subtitle line is saved as the sentence, with a link to the video at that moment
 - A deck per language (e.g. Korean words go to your Korean deck), set in the settings
 - Light and dark theme, keyboard shortcuts, context menu, per-site disable (in settings)
+
+## Getting started
+
+On install, a setup page opens: pick your languages, connect Anki (with the exact AnkiConnect setting to copy and a connection check), and choose or create a deck per language. It can be opened again from the settings ("Run setup again"). The manual steps are below.
 
 ## Install (development)
 
@@ -83,6 +90,7 @@ If the test still fails, make sure Anki is running and the origin is not listed 
 | Look up and add right away | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> |
 | Open the reader | Toolbar popup → Open in reader, or right-click the page → Open in reader |
 | Look up in the reader | Click a word; Shift+click a second word for the phrase in between |
+| Quick peek | Hold <kbd>Shift</kbd> over a word in the reader or in YouTube subtitles |
 | Add to Anki | <kbd>Enter</kbd> |
 | Play pronunciation | <kbd>P</kbd> |
 | Edit fields | <kbd>E</kbd> |
@@ -110,7 +118,8 @@ src/
   stats/         stats page and the numbers behind it
   reader/        reader page and the script that finds the article
   vendor/        Mozilla Readability (Apache-2.0)
-data/frequency/  bundled word frequency lists (built by scripts/build-frequency.mjs)
+  welcome/       first-run setup page
+data/            bundled data: frequency lists, CC-CEDICT, KANJIDIC2 (built by the scripts in scripts/)
   options/       settings page
 test/            node:test unit tests with saved API responses
 ```
@@ -142,10 +151,12 @@ Selected text and the surrounding sentence go to the translation and dictionary 
 
 Reader: [Readability](https://github.com/mozilla/readability) by Mozilla, Apache-2.0 (see [src/vendor/readability/LICENSE.md](src/vendor/readability/LICENSE.md)).
 
+Chinese dictionary: [CC-CEDICT](https://cc-cedict.org/) by MDBG, CC BY-SA 4.0 (see [data/cedict/ATTRIBUTION.md](data/cedict/ATTRIBUTION.md)).
+
+Kanji meanings: [KANJIDIC2](https://www.edrdg.org/wiki/index.php/KANJIDIC_Project) by EDRDG, CC BY-SA 4.0 (see [data/kanjidic/ATTRIBUTION.md](data/kanjidic/ATTRIBUTION.md)).
+
 Word frequency lists: [FrequencyWords](https://github.com/hermitdave/FrequencyWords) by Hermit Dave, CC BY-SA 4.0 (see [data/frequency/ATTRIBUTION.md](data/frequency/ATTRIBUTION.md)).
 
 ## Roadmap
 
-- **Chinese dictionary:** bundled CC-CEDICT for definitions and pinyin, also for simplified spellings (Wiktionary only covers traditional ones)
-- **Korean verb endings:** 갔어요 → 가다
 - Audio clips and screenshots from YouTube, more card templates, AI translation provider

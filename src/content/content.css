@@ -124,6 +124,19 @@
   white-space: nowrap;
 }
 
+.kanji {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 2px 0;
+  font-size: 13px;
+}
+
+.kanji-char {
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
 .base {
   margin-top: 2px;
   font-size: 13px;

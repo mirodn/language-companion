@@ -7,7 +7,10 @@ import { parse as parseWiktionary } from "../src/background/providers/wiktionary
 import { parse as parseFreeDictionary } from "../src/background/providers/freedictionary.js";
 import { parse as parseTatoeba } from "../src/background/providers/tatoeba.js";
 import { parse as parseJisho } from "../src/background/providers/jisho.js";
-import wiktionary, { stripParticle } from "../src/background/providers/wiktionary.js";
+import wiktionary from "../src/background/providers/wiktionary.js";
+import { stripParticle, verbCandidates } from "../src/background/korean.js";
+import cedict, { parse as parseCedict } from "../src/background/providers/cedict.js";
+import kanjidic, { parseFile as parseKanjidic } from "../src/background/providers/kanjidic.js";
 import { isPhrase, lookupDetails, lookupTranslation, resolveSourceLang } from "../src/background/lookup.js";
 import { createFrequency, frequencyLabel } from "../src/background/frequency.js";
 import "../src/shared/settings.js";
@@ -160,7 +163,7 @@ test("lookupTranslation skips translation for English words", async () => {
 test("lookupDetails skips phrases", async () => {
   const fetch = async () => assert.fail("should not call any provider");
   const result = await lookupDetails({ text: "The house is very big today.", sourceLang: "en" }, DEFAULTS, { fetch });
-  assert.deepEqual(result, { ipa: "", reading: "", audioUrl: "", definitions: [], examples: [], base: null, frequency: null, errors: [] });
+  assert.deepEqual(result, { ipa: "", reading: "", audioUrl: "", definitions: [], examples: [], kanji: [], base: null, frequency: null, errors: [] });
 });
 
 test("isPhrase counts words, or characters for languages without spaces", () => {
@@ -321,4 +324,69 @@ test("the card offers Japanese or Chinese only for Han text when both are learne
   assert.deepEqual(hanChoices(["学校", "学校に行く"], ["ja", "zh"]), []);
   assert.deepEqual(hanChoices(["学校"], ["ja"]), []);
   assert.deepEqual(hanChoices(["학교"], ["ja", "zh"]), []);
+});
+
+test("Korean verb endings lead back to the dictionary form", () => {
+  const first = (word, n = 3) => verbCandidates(word).slice(0, n);
+  assert.ok(first("먹었어요", 1).includes("먹다"));
+  assert.ok(first("갔어요").includes("가다"));
+  assert.ok(first("공부했습니다").includes("공부하다"));
+  assert.ok(first("합니다", 1).includes("하다"));
+  assert.ok(first("봐요").includes("보다"));
+  assert.ok(first("가르쳐요").includes("가르치다"));
+  assert.ok(first("어려워요").includes("어렵다"));
+  assert.ok(first("갈", 1).includes("가다"));
+  assert.ok(first("마셨어요").includes("마시다"));
+  // 있어요 is 있다, which has to come before 이다 (the copula).
+  assert.deepEqual(first("있어요", 2), ["있다", "이다"]);
+  assert.ok(!verbCandidates("합니다").includes("합니다"));
+  assert.deepEqual(verbCandidates("hello"), []);
+});
+
+test("Wiktionary tries the Korean verb's dictionary form", async () => {
+  const pages = { 가다: { ko: [{ partOfSpeech: "Verb", definitions: [{ definition: "to go" }] }] } };
+  const urls = [];
+  const fetch = async (url) => {
+    const word = decodeURIComponent(url.split("/").pop());
+    urls.push(word);
+    return pages[word] ? { ok: true, status: 200, json: async () => pages[word] } : { ok: false, status: 404 };
+  };
+  const result = await wiktionary.lookup({ text: "갔어요", src: "ko" }, DEFAULTS, { fetch });
+  assert.deepEqual(result.base, { word: "가다", formOf: "conjugated form of 가다" });
+  assert.deepEqual(result.definitions, [{ pos: "Verb", text: "to go" }]);
+  assert.ok(urls.length <= 6, `at most a few requests, got ${urls.join(", ")}`);
+});
+
+test("CC-CEDICT finds both spellings and keeps several readings apart", async () => {
+  const shard = [
+    "学校\t學校\txué xiào\tschool/Classifier: 所",
+    "行\t行\tháng\trow; line/line of business",
+    "行\t行\théng\tused in 道行 (dào héng)",
+    "行\t行\txíng\tto walk; to go/capable",
+    "李\t李\tLǐ\tsurname Li",
+    "李\t李\tlǐ\tplum",
+  ].join("\n");
+  assert.deepEqual(parseCedict(shard, "學校"), {
+    reading: "xué xiào",
+    definitions: [{ pos: "", text: "school" }, { pos: "", text: "Classifier: 所" }],
+  });
+  const walk = parseCedict(shard, "行");
+  assert.equal(walk.reading, "háng / xíng");
+  assert.deepEqual(walk.definitions.slice(0, 2), [{ pos: "háng", text: "row; line" }, { pos: "xíng", text: "to walk; to go" }]);
+  assert.deepEqual(parseCedict(shard, "李"), { reading: "lǐ", definitions: [{ pos: "", text: "surname Li" }, { pos: "", text: "plum" }] });
+  assert.deepEqual(parseCedict(shard, "猫"), { reading: "", definitions: [] });
+
+  const loaded = [];
+  await cedict.lookup({ text: "学校" }, DEFAULTS, { loadShard: async (n) => (loaded.push(n), shard) });
+  assert.deepEqual(loaded, ["学".codePointAt(0) % 64]);
+});
+
+test("KANJIDIC breaks a Japanese word into its kanji", async () => {
+  const kanjidicMap = parseKanjidic("学\tstudy; learning; science\tガク\tまな.ぶ\n校\texam; school; printing\tコウ、キョウ\t\n");
+  const { kanji } = await kanjidic.lookup({ text: "学校に学ぶ" }, DEFAULTS, { kanjidic: kanjidicMap });
+  assert.deepEqual(kanji, [
+    { character: "学", meanings: "study; learning; science", on: "ガク", kun: "まな.ぶ" },
+    { character: "校", meanings: "exam; school; printing", on: "コウ、キョウ", kun: "" },
+  ]);
+  assert.deepEqual((await kanjidic.lookup({ text: "ありがとう" }, DEFAULTS, { kanjidic: kanjidicMap })).kanji, []);
 });

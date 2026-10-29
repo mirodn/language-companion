@@ -85,6 +85,11 @@ test("buildNote tags the frequency and highlights the word as written when savin
   assert.ok(buildNote({ ...card, frequency: "JLPT N5" }, settings).tags.includes("lc::freq::jlpt-n5"));
 });
 
+test("buildNote adds the kanji breakdown to the definition", () => {
+  const note = buildNote({ ...card, definitions: ["school"], kanji: [{ character: "学", meanings: "study" }, { character: "校", meanings: "school" }] }, settings);
+  assert.equal(note.fields.Definition, 'school<div class="kanji">学 study · 校 school</div>');
+});
+
 test("duplicateQuery escapes Anki search syntax", () => {
   assert.equal(duplicateQuery({ ...card, word: 'a_"b"' }, settings), '"deck:German::Vocab" "Word:a\\_&quot;b&quot;"');
 });

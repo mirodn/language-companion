@@ -91,10 +91,10 @@ export async function lookupTranslation(req, settings, ctx = {}) {
 // A failing provider only adds an entry to `errors`.
 export async function lookupDetails(req, settings, ctx = {}) {
   const { text, src, tgt } = await resolveLangs(req, settings, ctx);
-  const empty = { ipa: "", reading: "", audioUrl: "", definitions: [], examples: [], base: null, frequency: null, errors: [] };
+  const empty = { ipa: "", reading: "", audioUrl: "", definitions: [], examples: [], kanji: [], base: null, frequency: null, errors: [] };
   if (isPhrase(text, src)) return empty;
 
-  const cacheKey = ["details", 2, src, tgt, text].join("|");
+  const cacheKey = detailsKey(src, tgt, text);
   // Jisho's JLPT level counts as frequency too, so the setting is applied to cached results as well.
   const withFrequency = (details) => (settings.providers.frequency === false ? { ...details, frequency: null } : details);
   const cached = await ctx.cache?.get(cacheKey);
@@ -115,15 +115,33 @@ export async function lookupDetails(req, settings, ctx = {}) {
   return withFrequency({ ...details, errors });
 }
 
+const detailsKey = (src, tgt, text) => ["details", 3, src, tgt, text].join("|");
+
+// Reading and main meaning of one word for the quick peek: dictionaries only (example sentences are
+// slow), reusing a cached full lookup when there is one, with the translator as a fallback.
+export async function peekWord(req, settings, ctx = {}) {
+  const { text, src, tgt } = await resolveLangs(req, settings, ctx);
+  let details = await ctx.cache?.get(detailsKey(src, tgt, text));
+  if (!details) {
+    const enabled = (p) => settings.providers[p.id] !== false && p.supports(src, tgt);
+    const results = await Promise.allSettled(dictionaries.filter(enabled).map((p) => p.lookup({ text, src, tgt }, settings, ctx)));
+    details = merge(results.filter((r) => r.status === "fulfilled").map((r) => r.value), settings);
+  }
+  let meaning = details.definitions[0]?.text ?? "";
+  if (!meaning && src !== tgt) meaning = (await lookupTranslation({ ...req, sentence: "" }, settings, ctx)).translation;
+  return { word: text, reading: details.reading || details.ipa, base: details.base?.word ?? "", meaning, sourceLang: src };
+}
+
 // Combines provider results. Earlier results win for single values; lists are concatenated.
 export function merge(parts, settings) {
-  const merged = { ipa: "", reading: "", audioUrl: "", definitions: [], examples: [], base: null, frequency: null };
+  const merged = { ipa: "", reading: "", audioUrl: "", definitions: [], examples: [], kanji: [], base: null, frequency: null };
   for (const part of parts) {
     merged.ipa ||= part.ipa ?? "";
     merged.reading ||= part.reading ?? "";
     merged.audioUrl ||= part.audioUrl ?? "";
     merged.base ||= part.base ?? null;
     merged.frequency ||= part.frequency ?? null;
+    if (!merged.kanji.length) merged.kanji = part.kanji ?? [];
     // Definitions from the first dictionary that has any; mixing sources gets repetitive.
     if (!merged.definitions.length) merged.definitions = part.definitions ?? [];
     merged.examples.push(...(part.examples ?? []));

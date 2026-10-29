@@ -22,7 +22,7 @@
     deeplKey: "",
     libreUrl: "",
     libreKey: "",
-    providers: { freedictionary: true, jisho: true, wiktionary: true, tatoeba: true, frequency: true },
+    providers: { freedictionary: true, jisho: true, cedict: true, kanjidic: true, wiktionary: true, tatoeba: true, frequency: true },
     maxDefinitions: 4,
     maxExamples: 3,
 

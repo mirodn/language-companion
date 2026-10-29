@@ -1,7 +1,7 @@
 import "../shared/messages.js";
 import "../shared/settings.js";
 import { createAnkiClient, buildNote, duplicateQuery, resolveNoteType, NOTE_TYPE } from "./anki.js";
-import { lookupDetails, lookupTranslation } from "./lookup.js";
+import { lookupDetails, lookupTranslation, peekWord } from "./lookup.js";
 import { createFrequency } from "./frequency.js";
 import { getCached, setCached } from "./cache.js";
 import { flushQueue, loadLog, logAdded, queueNote, removeEntry } from "./word-log.js";
@@ -12,7 +12,7 @@ const { MSG, settings: settingsStore } = globalThis.LC;
 
 browser.runtime.onInstalled.addListener(({ reason }) => {
   setupMenus();
-  if (reason === "install") browser.runtime.openOptionsPage();
+  if (reason === "install") browser.tabs.create({ url: browser.runtime.getURL("src/welcome/welcome.html") });
 });
 browser.runtime.onStartup.addListener(setupMenus);
 
@@ -130,6 +130,10 @@ const handlers = {
     return lookupTranslation(message, await settingsStore.getSettings(), lookupContext);
   },
 
+  async [MSG.PEEK](message) {
+    return peekWord(message, await settingsStore.getSettings(), lookupContext);
+  },
+
   async [MSG.LOOKUP_DETAILS](message) {
     return lookupDetails(message, await settingsStore.getSettings(), lookupContext);
   },
@@ -151,6 +155,11 @@ const handlers = {
   async [MSG.ANKI_DECKS]() {
     const { client } = await anki();
     return (await client.deckNames()).sort((a, b) => a.localeCompare(b));
+  },
+
+  async [MSG.ANKI_CREATE_DECK]({ deck }) {
+    const { client } = await anki();
+    return client.createDeck(deck);
   },
 
   async [MSG.ANKI_MODELS]() {

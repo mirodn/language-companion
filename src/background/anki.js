@@ -54,6 +54,7 @@ export function createAnkiClient({ url, key, fetch: fetchImpl = globalThis.fetch
     // Shows an "allow this origin?" dialog in Anki the first time.
     requestPermission: () => invoke("requestPermission"),
     deckNames: () => invoke("deckNames"),
+    createDeck: (deck) => invoke("createDeck", { deck }),
     modelNames: () => invoke("modelNames"),
     modelFieldNames: (modelName) => invoke("modelFieldNames", { modelName }),
 
@@ -78,14 +79,21 @@ export function createAnkiClient({ url, key, fetch: fetchImpl = globalThis.fetch
 
 // Builds an AnkiConnect note from the card the user saw (and maybe edited).
 // card: { word, surface?, translation, definitions[], ipa, reading, audioUrl, sentence, sentenceTranslation,
-//         example: {text, translation}|null, pageUrl, pageTitle, sourceLang, targetLang, deck, tags?, frequency? }
+//         example: {text, translation}|null, pageUrl, pageTitle, sourceLang, targetLang, deck, tags?, frequency?,
+//         kanji?: [{character, meanings}] }
 export function buildNote(card, settings) {
   const values = {
     Word: escapeHtml(card.word),
     Translation: escapeHtml(card.translation),
-    Definition: card.definitions.length > 1
-      ? `<ol>${card.definitions.map((d) => `<li>${escapeHtml(d)}</li>`).join("")}</ol>`
-      : escapeHtml(card.definitions[0] ?? ""),
+    Definition: [
+      card.definitions.length > 1
+        ? `<ol>${card.definitions.map((d) => `<li>${escapeHtml(d)}</li>`).join("")}</ol>`
+        : escapeHtml(card.definitions[0] ?? ""),
+      // Kanji breakdown, e.g. "学 study; learning · 校 exam; school", on the back of the card.
+      card.kanji?.length
+        ? `<div class="kanji">${card.kanji.map(({ character, meanings }) => `${escapeHtml(character)} ${escapeHtml(meanings)}`).join(" · ")}</div>`
+        : "",
+    ].join(""),
     // Japanese: the word with furigana, so the reading shows on the back of the card.
     Pronunciation: card.reading ? rubyHtml(card.word, card.reading) : escapeHtml(card.ipa),
     Audio: "",
@@ -197,6 +205,7 @@ const NOTE_TYPE_DEFINITION = {
 .translation { font-size: 1.4em; font-weight: 600; margin: 12px 0; }
 .muted { color: #6e6e73; font-size: 0.85em; }
 .definition, .example { text-align: left; max-width: 560px; margin: 12px auto; font-size: 0.9em; }
+.definition .kanji { margin-top: 8px; color: #6e6e73; }
 .source { margin-top: 20px; font-size: 0.75em; }
 .source a { color: inherit; }
 hr { border: none; border-top: 1px solid #d2d2d7; margin: 20px 0; }

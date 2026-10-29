@@ -1,4 +1,5 @@
 import { fetchJson, stripHtml } from "./http.js";
+import { stripParticle, verbCandidates } from "../korean.js";
 
 // English Wiktionary definitions for words in (almost) any language.
 // Definitions are written in English regardless of the word's language.
@@ -23,26 +24,28 @@ export default {
       }
       return result;
     }
-    // Korean nouns carry their particle (학교에 "at school"); Wiktionary only has the bare noun.
-    const noun = src === "ko" ? stripParticle(text) : null;
-    if (noun) {
-      const result = parse(await fetchPage(this.id, noun.word, ctx), src);
-      if (result.definitions.length) return { ...result, base: { word: noun.word, formOf: `with the particle ${noun.particle}` } };
+    if (src === "ko") {
+      for (const { word, formOf } of koreanBaseForms(text)) {
+        const result = parse(await fetchPage(this.id, word, ctx), src);
+        if (result.definitions.length) return { ...result, base: { word, formOf } };
+      }
     }
     return { definitions: [], examples: [], base: null };
   },
 };
 
-// Common Korean particles, longest first so 에서 wins over 서. Only tried when the word as written
-// has no entry, since some words end in the same syllables (아이 "child" is not 아 + 이).
-const KO_PARTICLES = [
-  "에서는", "에게서", "으로는", "에서", "에게", "한테", "으로", "부터", "까지", "처럼", "보다", "에는", "에도",
-  "하고", "이랑", "은", "는", "이", "가", "을", "를", "에", "와", "과", "도", "의", "로", "만", "랑",
-];
+// Wiktionary only has dictionary forms: the noun without its particle (학교에 → 학교), the verb
+// without its ending (갔어요 → 가다). Each candidate is one request, so only the likeliest are tried.
+const MAX_VERB_CANDIDATES = 4;
 
-export function stripParticle(word) {
-  const particle = KO_PARTICLES.find((p) => word.length > p.length && word.endsWith(p));
-  return particle ? { word: word.slice(0, -particle.length), particle } : null;
+function koreanBaseForms(text) {
+  const noun = stripParticle(text);
+  return [
+    ...(noun ? [{ word: noun.word, formOf: `with the particle ${noun.particle}` }] : []),
+    ...verbCandidates(text)
+      .slice(0, MAX_VERB_CANDIDATES)
+      .map((word) => ({ word, formOf: `conjugated form of ${word}` })),
+  ];
 }
 
 function fetchPage(id, word, ctx) {

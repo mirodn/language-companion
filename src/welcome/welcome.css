@@ -1,0 +1,153 @@
+main {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 40px 16px 80px;
+}
+
+header {
+  margin-bottom: 24px;
+}
+
+h1 {
+  font-size: 24px;
+}
+
+section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 22px;
+  margin-bottom: 16px;
+}
+
+h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.step {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+}
+
+.badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--success);
+}
+
+.small {
+  font-size: 12px;
+}
+
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+}
+
+/* Languages */
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.choices label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.choices label:has(input:checked) {
+  border-color: var(--accent);
+}
+
+.choices label:has(input:disabled) {
+  cursor: default;
+}
+
+/* Anki steps */
+
+.steps {
+  margin: 0 0 16px;
+  padding-left: 20px;
+}
+
+.steps li {
+  margin-bottom: 12px;
+}
+
+code {
+  font: 13px ui-monospace, SFMono-Regular, Menlo, monospace;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.copy-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  min-width: 0;
+}
+
+.copy-row code {
+  padding: 5px 8px;
+  overflow-x: auto;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.copy-row button {
+  flex-shrink: 0;
+}
+
+/* Decks */
+
+.deck-row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.deck-row select {
+  width: 100%;
+}
+
+/* Samples */
+
+.sample {
+  margin: 0 0 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.sample p {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.7;
+}
+
+.sample .translation {
+  font-size: 12px;
+  color: var(--muted);
+}

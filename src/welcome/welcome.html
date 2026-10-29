@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Welcome to Language Companion</title>
+    <link rel="stylesheet" href="../shared/page.css" />
+    <link rel="stylesheet" href="welcome.css" />
+    <!-- The page scripts, so step 4 can be tried right here. -->
+    <script src="../shared/messages.js"></script>
+    <script src="../shared/languages.js"></script>
+    <script src="../shared/settings.js"></script>
+    <script src="../shared/furigana.js"></script>
+    <script src="../content/selection.js"></script>
+    <script src="../content/popup-ui.js"></script>
+    <script src="../content/content.js"></script>
+    <script type="module" src="welcome.js"></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Welcome to Language Companion</h1>
+        <p class="muted">Four short steps, and you can look up words on any page and save them to Anki.</p>
+      </header>
+
+      <section>
+        <h2><span class="step">1</span> Your languages</h2>
+        <p class="muted">Lookups are offered only for text in these languages. You can change them later in the settings.</p>
+        <div id="languages" class="choices"></div>
+      </section>
+
+      <section>
+        <h2><span class="step">2</span> Connect Anki <span id="anki-badge" class="badge"></span></h2>
+        <ol class="steps">
+          <li>
+            Install <a href="https://apps.ankiweb.net/" target="_blank" rel="noreferrer">Anki</a> and open it.
+          </li>
+          <li>
+            In Anki: <b>Tools → Add-ons → Get Add-ons…</b>, enter this code, then restart Anki:
+            <div class="copy-row"><code id="addon-code">2055492159</code><button type="button" data-copy="addon-code">Copy</button></div>
+          </li>
+          <li>
+            <b>Tools → Add-ons</b> → select <b>AnkiConnect</b> → <b>Config</b>. In <code>"webCorsOriginList"</code>, add this
+            line after <code>"http://localhost",</code> then click <b>Save</b> and restart Anki:
+            <div class="copy-row"><code id="origin-line"></code><button type="button" data-copy="origin-line">Copy</button></div>
+          </li>
+        </ol>
+        <div class="inline">
+          <button type="button" id="check-anki" class="primary">Check connection</button>
+          <span id="anki-status" class="muted">If Anki asks whether to allow this extension, click Yes.</span>
+        </div>
+        <p class="muted small">
+          No Anki yet? You can still look up words. Words you save are kept and added once Anki is connected.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="step">3</span> Decks</h2>
+        <p class="muted">Each language's words go to its own deck.</p>
+        <div id="decks"></div>
+        <p id="decks-hint" class="muted small">Connect Anki first to choose decks.</p>
+      </section>
+
+      <section>
+        <h2><span class="step">4</span> Try it</h2>
+        <p class="muted">Select a word below and click the small 文A button that appears.</p>
+        <div id="samples" class="samples"></div>
+        <p class="muted small">
+          On web pages it works the same way. For longer articles, use <b>Open in reader</b> in the toolbar popup: there you
+          just click a word. <a href="#" id="open-options">All settings</a>
+        </p>
+      </section>
+    </main>
+  </body>
+</html>
