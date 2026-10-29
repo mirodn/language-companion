@@ -34,7 +34,7 @@
   }
 
   class CompanionUI {
-    // handlers: { onTrigger, onAdd, onOpenInAnki, onSourceLangChange, onDeckChange, onCardChanged, onClose }
+    // handlers: { onTrigger, onAdd, onOpenInAnki, onSourceLangChange, onUseBaseForm, onDeckChange, onCardChanged, onClose }
     constructor({ css, theme, handlers }) {
       this.handlers = handlers;
       this.state = null;
@@ -180,6 +180,8 @@
       result.ipa ||= details.ipa ?? "";
       result.reading ||= details.reading ?? "";
       result.audioUrl = details.audioUrl ?? "";
+      result.base = details.base ?? null;
+      result.frequency = details.frequency ?? null;
       result.definitions = details.definitions ?? [];
       result.examples = details.examples ?? [];
       result.errors = [...result.errors, ...(details.errors ?? [])];
@@ -223,8 +225,11 @@
         ipa: result.ipa,
         reading: result.reading,
         audioUrl: result.audioUrl,
+        // The word as it appeared in the sentence, when the base form is saved instead.
+        surface: result.surface ?? "",
         sentence: result.sentence,
         sentenceTranslation: result.sentenceTranslation,
+        frequency: result.frequency?.label ?? "",
         example: result.examples[selectedExample] ?? null,
         pageUrl: this.state.context.pageUrl ?? location.href,
         pageTitle: this.state.context.pageTitle ?? document.title,
@@ -244,6 +249,12 @@
 
     add() {
       if (this.canAdd()) this.handlers.onAdd(this.getCard());
+    }
+
+    // Looks up and saves the base form (courir) instead of the inflected word (courait).
+    useBaseForm() {
+      const base = this.state?.result?.base;
+      if (base && !this.state.editing) this.handlers.onUseBaseForm(base.word);
     }
 
     playAudio() {
@@ -293,6 +304,10 @@
         this.toggleEdit();
         return true;
       }
+      if ((event.key === "b" || event.key === "B") && this.state.result?.base) {
+        this.useBaseForm();
+        return true;
+      }
       return false;
     }
 
@@ -329,15 +344,17 @@
           result.ipa && h("span", { class: "ipa" }, result.ipa),
           h("button", { class: "icon-button", title: "Pronounce (P)", onClick: () => this.playAudio() }, "🔊"),
           h("span", { class: "spacer" }),
+          this.renderFrequency(),
           this.renderLanguageSelect(),
           this.closeButton(),
         ),
+        this.renderBaseForm(),
         h("div", { class: "translation" }, result.translation || (result.sourceLang === result.targetLang ? "" : "—")),
         result.sentence &&
           h(
             "div",
             { class: "section" },
-            h("div", { class: "sentence" }, highlighted(result.sentence, result.word)),
+            h("div", { class: "sentence" }, highlighted(result.sentence, result.surface || result.word)),
             result.sentenceTranslation && h("div", { class: "muted" }, result.sentenceTranslation),
           ),
         this.state.detailsLoading && h("div", { class: "loading" }, "Loading definitions…"),
@@ -384,6 +401,36 @@
           ),
         result.errors.length > 0 && h("div", { class: "warnings", title: result.errors.join("\n") }, `Some sources failed: ${result.errors.join("; ")}`),
       ];
+    }
+
+    renderFrequency() {
+      const { frequency } = this.state.result;
+      if (!frequency) return null;
+      const title = frequency.rank
+        ? `#${frequency.rank.toLocaleString()} among the most common words in movie subtitles`
+        : frequency.label === "Rare"
+          ? "Not among the 20,000 most common words in movie subtitles"
+          : frequency.label === "Common"
+            ? "Marked as a common word by Jisho"
+            : "JLPT level, N5 is the easiest";
+      return h("span", { class: "freq", title }, frequency.label);
+    }
+
+    // "Base form: courir · third-person singular imperfect indicative" for an inflected word,
+    // or where the word came from after switching to its base form.
+    renderBaseForm() {
+      const { result } = this.state;
+      if (result.surface) return h("div", { class: "base muted" }, `Base form of “${result.surface}”`);
+      if (!result.base || result.base.word === result.word) return null;
+      // Wiktionary's "plural of cheval", without the "of cheval" part.
+      const grammar = (result.base.formOf ?? "").replace(/\s+of\s.*$/, "");
+      return h(
+        "div",
+        { class: "base" },
+        h("span", { class: "muted" }, "Base form: "),
+        h("button", { class: "link", title: "Look up and save the base form instead (B)", onClick: () => this.useBaseForm() }, result.base.word),
+        grammar && h("span", { class: "muted" }, ` · ${grammar}`),
+      );
     }
 
     // Source language (detected, can be corrected) → English.

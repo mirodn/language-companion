@@ -18,6 +18,8 @@ A Firefox extension for learning languages with real content. Select a word on a
 - Phrases and sentences are only translated; dictionaries and example sentences are looked up for words and short expressions
 - Pluggable translators: MyMemory (free, no key), DeepL (API key), LibreTranslate (self-hosted)
 - Dictionaries: Free Dictionary (English IPA and audio), Jisho (Japanese readings and definitions), Wiktionary (most languages), Tatoeba (example sentences)
+- **Base form:** inflected words show their base form ("courait → courir", "食べた → 食べる"). Click it (or press <kbd>B</kbd>) to look up and save the base form instead; the sentence keeps the word as written. Uses Wiktionary for most languages and Jisho for Japanese; Korean is mostly not covered
+- **Word frequency** badge ("Top 1k" … "Top 20k", or "Rare") from bundled subtitle word lists, using the base form's rank. Japanese shows the JLPT level or "Common" instead. Saved notes get a tag such as `lc::freq::top-2k`
 - **Furigana** for Japanese words: readings over each kanji on the card, and in the Pronunciation field of the Anki note (shown on the back)
 - **YouTube:** click any word in the subtitles. The video pauses and the card opens. The subtitle line is saved as the sentence, with a link to the video at that moment
 - A deck per language (e.g. Albanian words go to your Albanian deck), set in the settings
@@ -80,6 +82,7 @@ If the test still fails, make sure Anki is running and the origin is not listed 
 | Add to Anki | <kbd>Enter</kbd> |
 | Play pronunciation | <kbd>P</kbd> |
 | Edit fields | <kbd>E</kbd> |
+| Use the base form | <kbd>B</kbd> |
 | Close | <kbd>Esc</kbd> |
 
 ### YouTube
@@ -101,6 +104,7 @@ src/
   content/       selection handling and the in-page card (shadow DOM)
   action/        toolbar popup
   stats/         stats page and the numbers behind it
+data/frequency/  bundled word frequency lists (built by scripts/build-frequency.mjs)
   options/       settings page
 test/            node:test unit tests with saved API responses
 ```
@@ -127,6 +131,10 @@ Then register it in `providers/index.js` and add its host to `host_permissions` 
 ## Privacy
 
 Selected text and the surrounding sentence go to the translation and dictionary services you enable. Nothing else leaves your computer. Settings live in Firefox sync storage. The lookup cache, the list of saved words behind the stats, and notes waiting for Anki stay local.
+
+## Credits
+
+Word frequency lists: [FrequencyWords](https://github.com/hermitdave/FrequencyWords) by Hermit Dave, CC BY-SA 4.0 (see [data/frequency/ATTRIBUTION.md](data/frequency/ATTRIBUTION.md)).
 
 ## Roadmap
 

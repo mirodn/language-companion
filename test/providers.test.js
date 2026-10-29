@@ -7,12 +7,18 @@ import { parse as parseWiktionary } from "../src/background/providers/wiktionary
 import { parse as parseFreeDictionary } from "../src/background/providers/freedictionary.js";
 import { parse as parseTatoeba } from "../src/background/providers/tatoeba.js";
 import { parse as parseJisho } from "../src/background/providers/jisho.js";
+import wiktionary from "../src/background/providers/wiktionary.js";
 import { isPhrase, lookupDetails, lookupTranslation, resolveSourceLang } from "../src/background/lookup.js";
+import { createFrequency, frequencyLabel } from "../src/background/frequency.js";
 import "../src/shared/settings.js";
 import "../src/shared/furigana.js";
 
 const fixture = (name) => JSON.parse(readFileSync(new URL(`fixtures/${name}.json`, import.meta.url)));
 const { DEFAULTS } = globalThis.LC.settings;
+
+test("stripHtml drops inline style blocks", () => {
+  assert.equal(stripHtml("<style>.mw-parser-output .defdate{font-size:smaller}</style>a cat"), "a cat");
+});
 
 test("stripHtml removes tags and decodes entities", () => {
   assert.equal(stripHtml('<a href="/x">house</a>, <b>big</b> &amp; &#x27;old&#39; &nbsp;'), "house, big & 'old'");
@@ -40,7 +46,7 @@ test("Wiktionary picks the source language section", () => {
     translation: "We used to live in that house.",
     source: "Wiktionary",
   });
-  assert.deepEqual(parseWiktionary(null, "de"), { definitions: [], examples: [] });
+  assert.deepEqual(parseWiktionary(null, "de"), { definitions: [], examples: [], base: null });
 });
 
 test("Free Dictionary returns IPA and audio", () => {
@@ -148,7 +154,7 @@ test("lookupTranslation skips translation for English words", async () => {
 test("lookupDetails skips phrases", async () => {
   const fetch = async () => assert.fail("should not call any provider");
   const result = await lookupDetails({ text: "The house is very big today.", sourceLang: "en" }, DEFAULTS, { fetch });
-  assert.deepEqual(result, { ipa: "", reading: "", audioUrl: "", definitions: [], examples: [], errors: [] });
+  assert.deepEqual(result, { ipa: "", reading: "", audioUrl: "", definitions: [], examples: [], base: null, frequency: null, errors: [] });
 });
 
 test("isPhrase counts words, or characters for languages without spaces", () => {
@@ -171,7 +177,7 @@ test("Jisho returns the reading of exactly this word", () => {
   assert.equal(result.reading, "たべもの");
   assert.deepEqual(result.definitions[0], { pos: "Noun", text: "food" });
   // A longer word in the results must not lend its reading.
-  assert.deepEqual(parseJisho(fixture("jisho"), "食べ"), { reading: "", definitions: [] });
+  assert.deepEqual(parseJisho(fixture("jisho"), "食べ"), { reading: "", definitions: [], frequency: null, base: null });
   // Kana-only words need no reading.
   const kana = { data: [{ japanese: [{ reading: "ありがとう" }], senses: [{ english_definitions: ["thank you"] }] }] };
   assert.equal(parseJisho(kana, "ありがとう").reading, "");
@@ -187,4 +193,84 @@ test("furigana goes over the kanji only", () => {
   assert.deepEqual(segments("ありがとう", ""), [{ text: "ありがとう" }]);
   // A reading that does not fit goes over the whole word.
   assert.deepEqual(segments("食べ物", "くだもの"), [{ text: "食べ物", rt: "くだもの" }]);
+});
+
+test("Wiktionary finds the base form of an inflected word", () => {
+  const { definitions, base } = parseWiktionary(fixture("wiktionary-courait"), "fr");
+  assert.deepEqual(base, { word: "courir", formOf: "third-person singular imperfect indicative of courir" });
+  assert.equal(definitions[0].formOf, "courir");
+  // Romanizations link to another spelling, not a base form.
+  const romaji = {
+    ja: [{ partOfSpeech: "Romanization", definitions: [{ definition: 'Rōmaji transcription of <span class="form-of-definition-link"><i><a title="いしん">いしん</a></i></span>' }] }],
+  };
+  assert.equal(parseWiktionary(romaji, "ja").base, null);
+});
+
+test("Wiktionary shows the base word's definitions for an inflected form", async () => {
+  const urls = [];
+  const pages = {
+    courait: fixture("wiktionary-courait"),
+    courir: { fr: [{ partOfSpeech: "Verb", definitions: [{ definition: "to run" }] }] },
+  };
+  const fetch = async (url) => {
+    urls.push(decodeURIComponent(url.split("/").pop()));
+    return { ok: true, status: 200, json: async () => pages[urls.at(-1)] };
+  };
+  const result = await wiktionary.lookup({ text: "courait", src: "fr" }, DEFAULTS, { fetch });
+  assert.deepEqual(urls, ["courait", "courir"]);
+  assert.deepEqual(result.definitions, [{ pos: "Verb", text: "to run" }]);
+  assert.equal(result.base.word, "courir");
+});
+
+test("Jisho finds the dictionary form of a conjugated word, with its JLPT level", () => {
+  const result = parseJisho(fixture("jisho-tabeta"), "食べた");
+  assert.deepEqual(result.base, { word: "食べる", reading: "たべる", formOf: "conjugated form of 食べる" });
+  assert.equal(result.reading, "たべた");
+  assert.equal(result.definitions[0].text, "to eat");
+  assert.deepEqual(result.frequency, { label: "JLPT N5", rank: null });
+  // Exact matches report their frequency too; nouns are never treated as conjugated.
+  assert.deepEqual(parseJisho(fixture("jisho-tabeta"), "食べる").frequency, { label: "JLPT N5", rank: null });
+  const common = { data: [{ is_common: true, jlpt: [], japanese: [{ word: "猫", reading: "ねこ" }], senses: [] }] };
+  assert.deepEqual(parseJisho(common, "猫").frequency, { label: "Common", rank: null });
+  assert.equal(parseJisho(common, "猫だ").base, null);
+});
+
+test("frequency ranks words from the bundled lists", async () => {
+  const loads = [];
+  const frequency = createFrequency(async (lang) => {
+    loads.push(lang);
+    return "de\nje\ncheval\n";
+  });
+  assert.equal(await frequency.rank("fr", "Cheval"), 3);
+  assert.equal(await frequency.rank("fr", "chevaux"), Infinity);
+  assert.equal(await frequency.rank("ja", "猫"), null);
+  assert.equal(await frequency.rank("ko", "먹었다"), null);
+  assert.deepEqual(loads, ["fr", "ko"], "each list is loaded once");
+
+  assert.deepEqual(frequencyLabel(1), { label: "Top 1k", rank: 1 });
+  assert.deepEqual(frequencyLabel(1583), { label: "Top 2k", rank: 1583 });
+  assert.deepEqual(frequencyLabel(20000), { label: "Top 20k", rank: 20000 });
+  assert.deepEqual(frequencyLabel(Infinity), { label: "Rare", rank: null });
+  assert.equal(frequencyLabel(null), null);
+});
+
+test("lookupDetails rates the base form's frequency and respects the setting", async () => {
+  const pages = {
+    chevaux: { fr: [{ partOfSpeech: "Noun", definitions: [{ definition: 'plural of <span class="form-of-definition-link"><i><a title="cheval">cheval</a></i></span>' }] }] },
+    cheval: { fr: [{ partOfSpeech: "Noun", definitions: [{ definition: "horse" }] }] },
+  };
+  const fetch = async (url) => {
+    if (!url.includes("wiktionary")) return { ok: true, status: 200, json: async () => ({ data: [] }) };
+    return { ok: true, status: 200, json: async () => pages[decodeURIComponent(url.split("/").pop())] };
+  };
+  const ranks = { cheval: 1069 };
+  const ctx = { fetch, frequency: { rank: async (lang, word) => (lang === "fr" ? (ranks[word] ?? Infinity) : null) } };
+
+  const result = await lookupDetails({ text: "chevaux", sourceLang: "fr" }, DEFAULTS, ctx);
+  assert.equal(result.base.word, "cheval");
+  assert.deepEqual(result.definitions, [{ pos: "Noun", text: "horse" }]);
+  assert.deepEqual(result.frequency, { label: "Top 2k", rank: 1069 });
+
+  const off = { ...DEFAULTS, providers: { ...DEFAULTS.providers, frequency: false } };
+  assert.equal((await lookupDetails({ text: "chevaux", sourceLang: "fr" }, off, ctx)).frequency, null);
 });

@@ -19,7 +19,7 @@
     deeplKey: "",
     libreUrl: "",
     libreKey: "",
-    providers: { freedictionary: true, jisho: true, wiktionary: true, tatoeba: true },
+    providers: { freedictionary: true, jisho: true, wiktionary: true, tatoeba: true, frequency: true },
     maxDefinitions: 4,
     maxExamples: 3,
 

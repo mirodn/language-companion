@@ -1,5 +1,6 @@
 import "../shared/languages.js";
 import { translators, dictionaries, exampleSources } from "./providers/index.js";
+import { frequencyLabel } from "./frequency.js";
 
 const { languages } = globalThis.LC;
 
@@ -49,7 +50,7 @@ function errorsOf(results) {
 
 // The card is split into two requests so it can show the translation (fast) without
 // waiting for dictionaries and example sentences (slow, Wiktionary often takes seconds).
-// `ctx` may contain { fetch, detectLanguage, cache: { get, set } }.
+// `ctx` may contain { fetch, detectLanguage, cache: { get, set }, frequency: { rank } }.
 export async function lookupTranslation(req, settings, ctx = {}) {
   const { text, src, tgt } = await resolveLangs(req, settings, ctx);
   const translator = pickTranslator(settings, src, tgt);
@@ -79,16 +80,18 @@ export async function lookupTranslation(req, settings, ctx = {}) {
   };
 }
 
-// IPA, audio, definitions and examples from every enabled provider, in parallel.
+// IPA, audio, definitions, examples, base form and frequency from every enabled provider, in parallel.
 // A failing provider only adds an entry to `errors`.
 export async function lookupDetails(req, settings, ctx = {}) {
   const { text, src, tgt } = await resolveLangs(req, settings, ctx);
-  const empty = { ipa: "", reading: "", audioUrl: "", definitions: [], examples: [], errors: [] };
+  const empty = { ipa: "", reading: "", audioUrl: "", definitions: [], examples: [], base: null, frequency: null, errors: [] };
   if (isPhrase(text, src)) return empty;
 
-  const cacheKey = ["details", src, tgt, text].join("|");
+  const cacheKey = ["details", 2, src, tgt, text].join("|");
+  // Jisho's JLPT level counts as frequency too, so the setting is applied to cached results as well.
+  const withFrequency = (details) => (settings.providers.frequency === false ? { ...details, frequency: null } : details);
   const cached = await ctx.cache?.get(cacheKey);
-  if (cached) return { ...cached, errors: [] };
+  if (cached) return withFrequency({ ...cached, errors: [] });
 
   const enabled = (p) => settings.providers[p.id] !== false && p.supports(src, tgt);
   const providerReq = { text, src, tgt };
@@ -97,18 +100,23 @@ export async function lookupDetails(req, settings, ctx = {}) {
   );
   const errors = errorsOf(results);
   const details = merge(results.filter((r) => r.status === "fulfilled").map((r) => r.value), settings);
+  if (!details.frequency && ctx.frequency) {
+    details.frequency = await frequencyOf(details.base?.word, text, src, ctx.frequency).catch(() => null);
+  }
   // Only cache complete results, so a temporary outage does not stick for 30 days.
   if (!errors.length) await ctx.cache?.set(cacheKey, details);
-  return { ...details, errors };
+  return withFrequency({ ...details, errors });
 }
 
 // Combines provider results. Earlier results win for single values; lists are concatenated.
 export function merge(parts, settings) {
-  const merged = { ipa: "", reading: "", audioUrl: "", definitions: [], examples: [] };
+  const merged = { ipa: "", reading: "", audioUrl: "", definitions: [], examples: [], base: null, frequency: null };
   for (const part of parts) {
     merged.ipa ||= part.ipa ?? "";
     merged.reading ||= part.reading ?? "";
     merged.audioUrl ||= part.audioUrl ?? "";
+    merged.base ||= part.base ?? null;
+    merged.frequency ||= part.frequency ?? null;
     // Definitions from the first dictionary that has any; mixing sources gets repetitive.
     if (!merged.definitions.length) merged.definitions = part.definitions ?? [];
     merged.examples.push(...(part.examples ?? []));
@@ -116,6 +124,16 @@ export function merge(parts, settings) {
   merged.definitions = merged.definitions.slice(0, settings.maxDefinitions);
   merged.examples = dedupeBy(merged.examples, (e) => e.text).slice(0, settings.maxExamples);
   return merged;
+}
+
+// The better rank of the base word and the word as written: "chevaux" counts as common as
+// "cheval", and an inflected form that is common on its own ("est") keeps its rank.
+async function frequencyOf(baseWord, text, src, frequency) {
+  const rank = await frequency.rank(src, text);
+  // No list for this language, or the word can't be rated (see NO_RARE in frequency.js).
+  if (rank == null) return null;
+  const baseRank = (baseWord ? await frequency.rank(src, baseWord) : null) ?? Infinity;
+  return frequencyLabel(Math.min(rank, baseRank));
 }
 
 function dedupeBy(items, key) {

@@ -77,6 +77,14 @@ test("buildNote appends card tags, e.g. from YouTube", () => {
   assert.deepEqual(note.tags, ["language-companion", "extra", "lc::de", "lc::youtube"]);
 });
 
+test("buildNote tags the frequency and highlights the word as written when saving the base form", () => {
+  const note = buildNote({ ...card, word: "Haus", surface: "Häuser", sentence: "Die Häuser sind alt.", frequency: "Top 2k" }, settings);
+  assert.equal(note.fields.Word, "Haus");
+  assert.equal(note.fields.Sentence, "Die <b>Häuser</b> sind alt.");
+  assert.deepEqual(note.tags, ["language-companion", "extra", "lc::de", "lc::freq::top-2k"]);
+  assert.ok(buildNote({ ...card, frequency: "JLPT N5" }, settings).tags.includes("lc::freq::jlpt-n5"));
+});
+
 test("duplicateQuery escapes Anki search syntax", () => {
   assert.equal(duplicateQuery({ ...card, word: 'a_"b"' }, settings), '"deck:German::Vocab" "Word:a\\_&quot;b&quot;"');
 });

@@ -77,8 +77,8 @@ export function createAnkiClient({ url, key, fetch: fetchImpl = globalThis.fetch
 }
 
 // Builds an AnkiConnect note from the card the user saw (and maybe edited).
-// card: { word, translation, definitions[], ipa, reading, audioUrl, sentence, sentenceTranslation,
-//         example: {text, translation}|null, pageUrl, pageTitle, sourceLang, targetLang, deck, tags? }
+// card: { word, surface?, translation, definitions[], ipa, reading, audioUrl, sentence, sentenceTranslation,
+//         example: {text, translation}|null, pageUrl, pageTitle, sourceLang, targetLang, deck, tags?, frequency? }
 export function buildNote(card, settings) {
   const values = {
     Word: escapeHtml(card.word),
@@ -89,7 +89,8 @@ export function buildNote(card, settings) {
     // Japanese: the word with furigana, so the reading shows on the back of the card.
     Pronunciation: card.reading ? rubyHtml(card.word, card.reading) : escapeHtml(card.ipa),
     Audio: "",
-    Sentence: highlight(card.sentence, card.word),
+    // When the base form is saved, the sentence still contains the word as written.
+    Sentence: highlight(card.sentence, card.surface || card.word),
     SentenceTranslation: escapeHtml(card.sentenceTranslation),
     Example: card.example
       ? [escapeHtml(card.example.text), card.example.translation && `<i>${escapeHtml(card.example.translation)}</i>`]
@@ -112,7 +113,13 @@ export function buildNote(card, settings) {
     deckName: card.deck || settings.deck,
     modelName,
     fields,
-    tags: [...settings.tags.split(/\s+/).filter(Boolean), `lc::${card.sourceLang}`, ...(card.tags ?? [])],
+    tags: [
+      ...settings.tags.split(/\s+/).filter(Boolean),
+      `lc::${card.sourceLang}`,
+      // e.g. lc::freq::top-2k or lc::freq::jlpt-n5
+      ...(card.frequency ? [`lc::freq::${card.frequency.toLowerCase().replace(/\s+/g, "-")}`] : []),
+      ...(card.tags ?? []),
+    ],
     options: { allowDuplicate: false, duplicateScope: "deck" },
   };
 

@@ -34,6 +34,10 @@
         onAdd: (card) => addToAnki(card),
         onOpenInAnki: (card) => send(MSG.ANKI_BROWSE, { card }).catch((error) => ui.setAnkiState("error", error.message)),
         onSourceLangChange: (sourceLang) => lastRequest && runLookup({ ...lastRequest, sourceLang }),
+        // Same sentence and context, but the base word; the card remembers the original word.
+        onUseBaseForm: (word) =>
+          lastRequest &&
+          runLookup({ ...lastRequest, text: word, surface: lastRequest.surface ?? lastRequest.text, sourceLang: ui.getCard().sourceLang }),
         // The chosen deck becomes the deck for this card's language.
         onDeckChange: (card) => {
           LC.settings.saveSettings({ decks: { ...settings.decks, [card.sourceLang]: card.deck } });
@@ -59,7 +63,7 @@
     await runLookup(request, { autoAdd });
   }
 
-  // request: { text, sentence, rect, pageLang, sourceLang?, contentLang?, context? }
+  // request: { text, sentence, rect, pageLang, sourceLang?, contentLang?, context?, surface? }
   async function runLookup(request, { autoAdd = false } = {}) {
     lastRequest = request;
     const id = ++lookupId;
@@ -84,7 +88,7 @@
       return;
     }
     if (id !== lookupId) return;
-    card.setResult(result);
+    card.setResult(request.surface ? { ...result, surface: request.surface } : result);
     const detailsShown = details.then((data) => id === lookupId && card.setDetails(data));
 
     const deck = LC.settings.deckFor(settings, result.sourceLang);

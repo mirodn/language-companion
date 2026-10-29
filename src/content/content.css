@@ -113,6 +113,34 @@
   flex: 1;
 }
 
+.freq {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--bg-subtle);
+  white-space: nowrap;
+}
+
+.base {
+  margin-top: 2px;
+  font-size: 13px;
+}
+
+.link {
+  all: unset;
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.link:hover,
+.link:focus-visible {
+  text-decoration: underline;
+}
+
 .langs {
   display: flex;
   align-items: center;

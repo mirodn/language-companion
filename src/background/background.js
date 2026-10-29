@@ -2,6 +2,7 @@ import "../shared/messages.js";
 import "../shared/settings.js";
 import { createAnkiClient, buildNote, duplicateQuery, resolveNoteType, NOTE_TYPE } from "./anki.js";
 import { lookupDetails, lookupTranslation } from "./lookup.js";
+import { createFrequency } from "./frequency.js";
 import { getCached, setCached } from "./cache.js";
 import { flushQueue, loadLog, logAdded, queueNote, removeEntry } from "./word-log.js";
 
@@ -86,6 +87,7 @@ loadLog().then((entries) => entries.some((entry) => entry.status === "queued") &
 const lookupContext = {
   detectLanguage: (text) => browser.i18n.detectLanguage(text),
   cache: { get: getCached, set: setCached },
+  frequency: createFrequency(),
 };
 
 const handlers = {

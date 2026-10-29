@@ -34,6 +34,8 @@ const ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " }
 // textContent, so this is about readability, not sanitizing.
 export function stripHtml(html) {
   return String(html ?? "")
+    // Wiktionary inlines <style> blocks in some definitions.
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
     .replace(/<[^>]*>/g, "")
     .replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (match, entity) => {
       if (entity[0] === "#") {
