@@ -7,8 +7,8 @@ import { parse as parseWiktionary } from "../src/background/providers/wiktionary
 import { parse as parseFreeDictionary } from "../src/background/providers/freedictionary.js";
 import { parse as parseTatoeba } from "../src/background/providers/tatoeba.js";
 import { parse as parseJisho } from "../src/background/providers/jisho.js";
-import wiktionary from "../src/background/providers/wiktionary.js";
-import { isPhrase, lookupDetails, lookupTranslation, resolveSourceLang, translateLine } from "../src/background/lookup.js";
+import wiktionary, { stripParticle } from "../src/background/providers/wiktionary.js";
+import { isPhrase, lookupDetails, lookupTranslation, resolveSourceLang } from "../src/background/lookup.js";
 import { createFrequency, frequencyLabel } from "../src/background/frequency.js";
 import "../src/shared/settings.js";
 import "../src/shared/furigana.js";
@@ -63,39 +63,45 @@ test("Tatoeba prefers direct translations", () => {
   assert.equal(examples[2].translation, "Ich plane Häuser.");
 });
 
-test("resolveSourceLang order: card, writing system, detection, letters, page language", async () => {
-  const detect = async () => ({ isReliable: true, languages: [{ language: "fr", percentage: 99 }] });
-  const unreliable = async () => ({ isReliable: false, languages: [{ language: "fr", percentage: 40 }] });
-  assert.equal(await resolveSourceLang({ text: "x", sourceLang: "tr" }, detect), "tr");
-  assert.equal(await resolveSourceLang({ text: "x", sourceLang: "auto" }, detect), "fr");
-  assert.equal(await resolveSourceLang({ text: "x", pageLang: "sq-AL" }, unreliable), "sq");
+test("resolveSourceLang order: card, writing system, detection, page language", async () => {
+  const detect = async () => ({ isReliable: true, languages: [{ language: "ko", percentage: 99 }] });
+  const unreliable = async () => ({ isReliable: false, languages: [{ language: "ko", percentage: 40 }] });
+  assert.equal(await resolveSourceLang({ text: "x", sourceLang: "zh" }, detect), "zh");
+  assert.equal(await resolveSourceLang({ text: "x", sourceLang: "auto" }, detect), "ko");
+  assert.equal(await resolveSourceLang({ text: "x", pageLang: "ja-JP" }, unreliable), "ja");
   assert.equal(await resolveSourceLang({ text: "x" }, unreliable), "en");
 });
 
 test("resolveSourceLang recognizes writing systems before detection", async () => {
   const detect = async () => ({ isReliable: true, languages: [{ language: "zh", percentage: 99 }] });
-  assert.equal(await resolveSourceLang({ text: "дом" }, detect), "ru");
-  assert.equal(await resolveSourceLang({ text: "집" }, detect), "ko");
-  assert.equal(await resolveSourceLang({ text: "ありがとう" }, detect), "ja");
-  assert.equal(await resolveSourceLang({ text: "家" }, detect), "ja");
+  assert.equal(await resolveSourceLang({ text: "집" }, detect, ["ja"]), "ko");
+  assert.equal(await resolveSourceLang({ text: "ありがとう" }, detect, ["zh"]), "ja");
+  // A kanji word in a sentence with kana is Japanese.
+  assert.equal(await resolveSourceLang({ text: "学校", sentence: "学校に行きます。" }, detect, ["zh"]), "ja");
 });
 
-test("resolveSourceLang skips unsupported detections and falls back to telltale letters", async () => {
-  const detect = async () => ({ isReliable: true, languages: [{ language: "es" }, { language: "tr" }] });
+test("resolveSourceLang decides Han characters by the user's languages", async () => {
+  const detect = async () => ({ isReliable: true, languages: [{ language: "zh", percentage: 99 }] });
   const unsure = async () => ({ isReliable: false, languages: [] });
-  assert.equal(await resolveSourceLang({ text: "x" }, detect), "tr");
-  assert.equal(await resolveSourceLang({ text: "patëllxhan", pageLang: "en" }, unsure), "sq");
-  assert.equal(await resolveSourceLang({ text: "değil", pageLang: "en" }, unsure), "tr");
-  // German is not supported, so its letters mean nothing.
-  assert.equal(await resolveSourceLang({ text: "Straße", pageLang: "en" }, unsure), "en");
-  assert.equal(await resolveSourceLang({ text: "très", pageLang: "en" }, unsure), "fr");
+  assert.equal(await resolveSourceLang({ text: "学校" }, detect, ["ja"]), "ja");
+  assert.equal(await resolveSourceLang({ text: "学校" }, unsure, ["ko", "zh"]), "zh");
+  // Learning both: detection, then the page language, then the first one added.
+  assert.equal(await resolveSourceLang({ text: "学校" }, detect, ["ja", "zh"]), "zh");
+  assert.equal(await resolveSourceLang({ text: "学校", pageLang: "ja" }, unsure, ["zh", "ja"]), "ja");
+  assert.equal(await resolveSourceLang({ text: "学校" }, unsure, ["zh", "ja"]), "zh");
+  const english = async () => ({ isReliable: true, languages: [{ language: "en", percentage: 99 }] });
+  assert.equal(await resolveSourceLang({ text: "学校", sentence: "The word 学校 means school." }, english, ["zh", "ja"]), "zh");
+  // Learning neither (only Korean): detection, otherwise Japanese.
+  assert.equal(await resolveSourceLang({ text: "学校" }, unsure, ["ko"]), "ja");
 });
 
-test("resolveSourceLang prefers the subtitle track language", async () => {
+test("resolveSourceLang skips unsupported detections and track languages", async () => {
+  const detect = async () => ({ isReliable: true, languages: [{ language: "fr" }, { language: "ko" }] });
+  assert.equal(await resolveSourceLang({ text: "x" }, detect), "ko");
   assert.equal(await resolveSourceLang({ text: "x", contentLang: "ja" }), "ja");
   assert.equal(await resolveSourceLang({ text: "x", contentLang: "ja", sourceLang: "ko" }), "ko");
-  // Unsupported track languages fall back to the other rules.
-  assert.equal(await resolveSourceLang({ text: "x", contentLang: "sw", pageLang: "ko" }), "ko");
+  assert.equal(await resolveSourceLang({ text: "x", contentLang: "fr", pageLang: "ko" }), "ko");
+  assert.equal(await resolveSourceLang({ text: "maison", pageLang: "fr" }), "en");
 });
 
 test("lookupDetails merges providers and tolerates failures", async () => {
@@ -131,7 +137,7 @@ test("lookupTranslation translates the word and sentence and caches the word", a
   };
   const cache = new Map();
   const ctx = { fetch, cache: { get: async (k) => cache.get(k), set: async (k, v) => cache.set(k, v) } };
-  const req = { text: "maison", sentence: "La maison est grande.", sourceLang: "fr" };
+  const req = { text: "학교", sentence: "학교에 가요.", sourceLang: "ko" };
 
   const result = await lookupTranslation(req, DEFAULTS, ctx);
   assert.equal(result.targetLang, "en");
@@ -166,10 +172,10 @@ test("isPhrase counts words, or characters for languages without spaces", () => 
 
 test("deckFor uses the language's deck, or the fallback deck", () => {
   const { deckFor } = globalThis.LC.settings;
-  const settings = { ...DEFAULTS, deck: "English", decks: { sq: "Albanian", ja: "" } };
-  assert.equal(deckFor(settings, "sq"), "Albanian");
-  assert.equal(deckFor(settings, "ja"), "English");
-  assert.equal(deckFor(settings, "en"), "English");
+  const settings = { ...DEFAULTS, deck: "Default", decks: { ko: "Korean", ja: "" } };
+  assert.equal(deckFor(settings, "ko"), "Korean");
+  assert.equal(deckFor(settings, "ja"), "Default");
+  assert.equal(deckFor(settings, "en"), "Default");
 });
 
 test("Jisho returns the reading of exactly this word", () => {
@@ -239,13 +245,14 @@ test("frequency ranks words from the bundled lists", async () => {
   const loads = [];
   const frequency = createFrequency(async (lang) => {
     loads.push(lang);
-    return "de\nje\ncheval\n";
+    return lang === "en" ? "the\nyou\nhorse\n" : "학교\n";
   });
-  assert.equal(await frequency.rank("fr", "Cheval"), 3);
-  assert.equal(await frequency.rank("fr", "chevaux"), Infinity);
+  assert.equal(await frequency.rank("en", "Horse"), 3);
+  assert.equal(await frequency.rank("en", "horses"), Infinity);
   assert.equal(await frequency.rank("ja", "猫"), null);
+  assert.equal(await frequency.rank("ko", "학교"), 1);
   assert.equal(await frequency.rank("ko", "먹었다"), null);
-  assert.deepEqual(loads, ["fr", "ko"], "each list is loaded once");
+  assert.deepEqual(loads, ["en", "ko"], "each list is loaded once");
 
   assert.deepEqual(frequencyLabel(1), { label: "Top 1k", rank: 1 });
   assert.deepEqual(frequencyLabel(1583), { label: "Top 2k", rank: 1583 });
@@ -256,36 +263,62 @@ test("frequency ranks words from the bundled lists", async () => {
 
 test("lookupDetails rates the base form's frequency and respects the setting", async () => {
   const pages = {
-    chevaux: { fr: [{ partOfSpeech: "Noun", definitions: [{ definition: 'plural of <span class="form-of-definition-link"><i><a title="cheval">cheval</a></i></span>' }] }] },
-    cheval: { fr: [{ partOfSpeech: "Noun", definitions: [{ definition: "horse" }] }] },
+    먹었어요: { ko: [{ partOfSpeech: "Verb", definitions: [{ definition: 'polite past of <span class="form-of-definition-link"><i><a title="먹다">먹다</a></i></span>' }] }] },
+    먹다: { ko: [{ partOfSpeech: "Verb", definitions: [{ definition: "to eat" }] }] },
   };
   const fetch = async (url) => {
     if (!url.includes("wiktionary")) return { ok: true, status: 200, json: async () => ({ data: [] }) };
     return { ok: true, status: 200, json: async () => pages[decodeURIComponent(url.split("/").pop())] };
   };
-  const ranks = { cheval: 1069 };
-  const ctx = { fetch, frequency: { rank: async (lang, word) => (lang === "fr" ? (ranks[word] ?? Infinity) : null) } };
+  const ranks = { 먹다: 1069 };
+  const ctx = { fetch, frequency: { rank: async (lang, word) => (lang === "ko" ? (ranks[word] ?? Infinity) : null) } };
 
-  const result = await lookupDetails({ text: "chevaux", sourceLang: "fr" }, DEFAULTS, ctx);
-  assert.equal(result.base.word, "cheval");
-  assert.deepEqual(result.definitions, [{ pos: "Noun", text: "horse" }]);
+  const result = await lookupDetails({ text: "먹었어요", sourceLang: "ko" }, DEFAULTS, ctx);
+  assert.equal(result.base.word, "먹다");
+  assert.deepEqual(result.definitions, [{ pos: "Verb", text: "to eat" }]);
   assert.deepEqual(result.frequency, { label: "Top 2k", rank: 1069 });
 
   const off = { ...DEFAULTS, providers: { ...DEFAULTS.providers, frequency: false } };
-  assert.equal((await lookupDetails({ text: "chevaux", sourceLang: "fr" }, off, ctx)).frequency, null);
+  assert.equal((await lookupDetails({ text: "먹었어요", sourceLang: "ko" }, off, ctx)).frequency, null);
 });
 
-test("translateLine translates a subtitle line without caching it", async () => {
+
+test("Korean particles are stripped when the word as written has no Wiktionary entry", async () => {
+  assert.deepEqual(stripParticle("학교에서"), { word: "학교", particle: "에서" });
+  assert.deepEqual(stripParticle("친구와"), { word: "친구", particle: "와" });
+  assert.equal(stripParticle("에"), null);
+
+  const pages = { 학교: { ko: [{ partOfSpeech: "Noun", definitions: [{ definition: "school" }] }] }, 아이: { ko: [{ partOfSpeech: "Noun", definitions: [{ definition: "child" }] }] } };
   const urls = [];
   const fetch = async (url) => {
-    urls.push(url);
-    return { ok: true, status: 200, json: async () => fixture("mymemory") };
+    const word = decodeURIComponent(url.split("/").pop());
+    urls.push(word);
+    return pages[word] ? { ok: true, status: 200, json: async () => pages[word] } : { ok: false, status: 404 };
   };
-  const cache = { get: async () => assert.fail("no cache reads"), set: async () => assert.fail("no cache writes") };
-  const result = await translateLine({ text: "Je cours vite.", contentLang: "fr" }, DEFAULTS, { fetch, cache });
-  assert.deepEqual(result, { translation: "Haus", sourceLang: "fr" });
-  assert.equal(urls.length, 1);
-  // English subtitles are not translated into English.
-  assert.deepEqual(await translateLine({ text: "Hello there.", contentLang: "en" }, DEFAULTS, { fetch, cache }), { translation: "", sourceLang: "en" });
-  assert.equal(urls.length, 1);
+  const school = await wiktionary.lookup({ text: "학교에", src: "ko" }, DEFAULTS, { fetch });
+  assert.deepEqual(school.definitions, [{ pos: "Noun", text: "school" }]);
+  assert.deepEqual(school.base, { word: "학교", formOf: "with the particle 에" });
+  assert.deepEqual(urls, ["학교에", "학교"]);
+  // A word that exists as written keeps its own entry.
+  assert.equal((await wiktionary.lookup({ text: "아이", src: "ko" }, DEFAULTS, { fetch })).base, null);
+});
+
+test("lookups are offered only for text in the user's languages", () => {
+  const { isLearned } = globalThis.LC.languages;
+  assert.equal(isLearned(["学校", "学校に行く"], ["ja"]), true);
+  // The kana in the sentence makes it Japanese, which a Chinese learner doesn't learn.
+  assert.equal(isLearned(["学校", "学校に行く"], ["zh"]), false);
+  assert.equal(isLearned(["学校", "我去学校"], ["zh"]), true);
+  assert.equal(isLearned(["학교"], ["ja"]), false);
+  assert.equal(isLearned(["학교"], ["ja", "ko"]), true);
+  assert.equal(isLearned(["house", "The house is big."], ["ja", "ko", "zh"]), false);
+  assert.equal(isLearned(["学校"], ["ko"]), false);
+});
+
+test("the card offers Japanese or Chinese only for Han text when both are learned", () => {
+  const { hanChoices } = globalThis.LC.languages;
+  assert.deepEqual(hanChoices(["学校", "学校"], ["zh", "ko", "ja"]), ["zh", "ja"]);
+  assert.deepEqual(hanChoices(["学校", "学校に行く"], ["ja", "zh"]), []);
+  assert.deepEqual(hanChoices(["学校"], ["ja"]), []);
+  assert.deepEqual(hanChoices(["학교"], ["ja", "zh"]), []);
 });

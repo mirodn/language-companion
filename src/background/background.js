@@ -1,7 +1,7 @@
 import "../shared/messages.js";
 import "../shared/settings.js";
 import { createAnkiClient, buildNote, duplicateQuery, resolveNoteType, NOTE_TYPE } from "./anki.js";
-import { lookupDetails, lookupTranslation, translateLine } from "./lookup.js";
+import { lookupDetails, lookupTranslation } from "./lookup.js";
 import { createFrequency } from "./frequency.js";
 import { getCached, setCached } from "./cache.js";
 import { flushQueue, loadLog, logAdded, queueNote, removeEntry } from "./word-log.js";
@@ -19,10 +19,12 @@ browser.runtime.onStartup.addListener(setupMenus);
 function setupMenus() {
   browser.menus.removeAll().then(() => {
     browser.menus.create({ id: "lookup", title: 'Look up "%s"', contexts: ["selection"] });
+    browser.menus.create({ id: "reader", title: "Open in reader", contexts: ["page"] });
   });
 }
 
 browser.menus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === "reader" && tab?.id) openReader(tab).catch(() => {});
   if (info.menuItemId !== "lookup" || !tab?.id) return;
   browser.tabs.sendMessage(tab.id, { type: MSG.OPEN_CARD, text: info.selectionText }, { frameId: info.frameId });
 });
@@ -34,6 +36,39 @@ browser.commands.onCommand.addListener(async (command, tab) => {
     // No content script on this page (e.g. about: pages).
   });
 });
+
+// --- Reader -----------------------------------------------------------------------
+
+// Articles live in session storage until the browser closes; the reader tab reads its own by id.
+const ARTICLES_KEY = "readerArticles";
+const MAX_ARTICLES = 10;
+
+// Finds the article in `tab` (needs the activeTab grant from the toolbar button or the menu)
+// and opens it in the reader next to the tab.
+async function openReader(tab) {
+  let result;
+  try {
+    [{ result } = {}] = await browser.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ["src/vendor/readability/Readability.js", "src/reader/extract.js"],
+    });
+  } catch {
+    throw new Error("The reader can't open this page.");
+  }
+  if (!result) throw new Error("No article found on this page.");
+
+  const id = Date.now().toString(36);
+  const { [ARTICLES_KEY]: articles = {} } = await browser.storage.session.get(ARTICLES_KEY);
+  articles[id] = result;
+  const ids = Object.keys(articles);
+  ids.slice(0, Math.max(0, ids.length - MAX_ARTICLES)).forEach((old) => delete articles[old]);
+  await browser.storage.session.set({ [ARTICLES_KEY]: articles });
+  await browser.tabs.create({
+    url: browser.runtime.getURL(`src/reader/reader.html#${id}`),
+    index: tab.index + 1,
+    openerTabId: tab.id,
+  });
+}
 
 // --- Anki ---------------------------------------------------------------------
 
@@ -93,10 +128,6 @@ const lookupContext = {
 const handlers = {
   async [MSG.LOOKUP](message) {
     return lookupTranslation(message, await settingsStore.getSettings(), lookupContext);
-  },
-
-  async [MSG.TRANSLATE_LINE](message) {
-    return translateLine(message, await settingsStore.getSettings(), lookupContext);
   },
 
   async [MSG.LOOKUP_DETAILS](message) {
@@ -162,6 +193,10 @@ const handlers = {
   },
 
   [MSG.QUEUE_FLUSH]: () => runFlush(),
+
+  async [MSG.OPEN_READER]({ tabId }) {
+    await openReader(await browser.tabs.get(tabId));
+  },
 
   [MSG.LOG_REMOVE]: ({ id }) => removeEntry(id),
 };

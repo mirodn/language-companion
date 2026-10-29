@@ -1,7 +1,7 @@
 // Wires page selection -> lookup -> card -> Anki.
 (() => {
   const LC = globalThis.LC;
-  const { MSG, selection } = LC;
+  const { MSG, selection, languages } = LC;
 
   let settings = null;
   let ui = null;
@@ -53,6 +53,17 @@
     return ui;
   }
 
+  // Whether the text (and the sentence around it) is in one of the user's languages.
+  function inMyLanguages(text, sentence) {
+    return languages.isLearned([text, sentence], settings.learning);
+  }
+
+  // "Japanese", "Japanese or Korean", "Japanese, Korean or Chinese"
+  function myLanguageNames() {
+    const names = settings.learning.map((code) => languages.name(code));
+    return names.length > 1 ? `${names.slice(0, -1).join(", ")} or ${names.at(-1)}` : names[0];
+  }
+
   // --- Lookup ------------------------------------------------------------------
 
   async function openFromSelection({ autoAdd = false, text } = {}) {
@@ -69,6 +80,11 @@
     const id = ++lookupId;
     const card = await getUI();
     card.open(request.rect, request.text, request.context);
+    // Only reached through the shortcut or the context menu; the lookup button is not offered.
+    if (!request.sourceLang && !inMyLanguages(request.text, request.sentence)) {
+      card.setLookupError(`This text doesn't look like ${myLanguageNames()}. You can change your languages in the settings.`);
+      return;
+    }
 
     const payload = {
       text: request.text,
@@ -88,7 +104,12 @@
       return;
     }
     if (id !== lookupId) return;
-    card.setResult(request.surface ? { ...result, surface: request.surface } : result);
+    card.setResult({
+      ...result,
+      ...(request.surface ? { surface: request.surface } : {}),
+      // Han-only text when the user learns both Japanese and Chinese: the card offers a switch.
+      languageChoices: languages.hanChoices([request.surface ?? request.text, request.sentence], settings.learning),
+    });
     const detailsShown = details.then((data) => id === lookupId && card.setDetails(data));
 
     const deck = LC.settings.deckFor(settings, result.sourceLang);
@@ -146,7 +167,7 @@
     // The selection is only final after the mouseup has been processed.
     setTimeout(() => {
       const info = selection.current(settings.maxSelectionLength);
-      if (!info) return ui?.hideTrigger();
+      if (!info || !inMyLanguages(info.text, info.sentence)) return ui?.hideTrigger();
       if (settings.triggerMode === "instant") runLookup(info);
       else if (settings.triggerMode === "icon") getUI().then((card) => card.showTrigger(info.rect));
     }, 0);

@@ -19,6 +19,12 @@
       </header>
 
       <section>
+        <h2>Languages</h2>
+        <p class="muted">The languages you learn. Lookups are offered only for text in these languages. Words are translated into English and saved to the deck of their language.</p>
+        <div id="language-rows"></div>
+      </section>
+
+      <section>
         <h2>Anki</h2>
         <p class="muted">
           Requires Anki Desktop with the
@@ -42,9 +48,6 @@
             <span id="anki-status" class="muted"></span>
           </div>
         </div>
-        <h3>Decks</h3>
-        <p class="muted small">Words are translated into English and saved to the deck of their language.</p>
-        <div id="deck-rows"></div>
         <div class="row">
           <span>Note type</span>
           <div>
@@ -144,7 +147,6 @@
             <label class="choice"><input type="checkbox" data-setting="youtubeEnabled" /> Make subtitles clickable</label>
             <label class="choice"><input type="checkbox" data-setting="youtubePauseOnClick" /> Pause the video when I click a word</label>
             <label class="choice"><input type="checkbox" data-setting="youtubeResumeOnClose" /> Resume playback when the card closes</label>
-            <label class="choice"><input type="checkbox" data-setting="youtubeDualSubtitles" /> Show a translation under the subtitles <span class="muted">(every line uses your translator's quota; best with DeepL; MyMemory allows about 100 lines a day, or about 1,000 with an email)</span></label>
           </div>
         </div>
         <p class="muted small">Saved cards use the subtitle line as the sentence and link to the video at that moment.</p>

@@ -4,55 +4,75 @@
 
   // code: ISO 639-1 (used internally, by Wiktionary, MyMemory and LibreTranslate)
   // tatoeba: ISO 639-3 code used by Tatoeba
-  // deepl: DeepL source code, or null if DeepL does not support the language
-  // cjk: no spaces between words; affects sentence splitting and future furigana support
+  // deepl: DeepL code
+  // cjk: no spaces between words; affects phrase length and word splitting
   const LANGUAGES = [
-    { code: "en", name: "English", tatoeba: "eng", deepl: "EN" },
-    { code: "fr", name: "French", tatoeba: "fra", deepl: "FR" },
     { code: "ja", name: "Japanese", tatoeba: "jpn", deepl: "JA", cjk: true },
     { code: "ko", name: "Korean", tatoeba: "kor", deepl: "KO" },
-    { code: "ru", name: "Russian", tatoeba: "rus", deepl: "RU" },
-    { code: "sq", name: "Albanian", tatoeba: "sqi", deepl: null },
-    { code: "tr", name: "Turkish", tatoeba: "tur", deepl: "TR" },
+    { code: "zh", name: "Chinese", tatoeba: "cmn", deepl: "ZH", cjk: true },
+    // Everything is translated into English. English words get definitions only.
+    { code: "en", name: "English", tatoeba: "eng", deepl: "EN" },
   ];
 
-  // Everything is translated into English; the other languages are the ones being learned.
   const TARGET = "en";
 
   const byCode = new Map(LANGUAGES.map((lang) => [lang.code, lang]));
 
-  // Writing systems that identify a language on their own within this language list.
-  // Kanji alone (no kana) still means Japanese, since Chinese is not supported.
-  const SCRIPTS = [
-    [/[\u3040-\u30ff]/, "ja"],
-    [/[\uac00-\ud7af\u1100-\u11ff]/, "ko"],
-    [/[\u4e00-\u9fff]/, "ja"],
-    [/[\u0400-\u04ff]/, "ru"],
-  ];
-  // Letters only one of the Latin-script languages here uses. Ambiguous ones (ç, ö, ü) are left out.
-  const LETTERS = [
-    [/[ğışİ]/i, "tr"],
-    [/ë/i, "sq"],
-    [/[éèêàâîôûùœ]/i, "fr"],
-  ];
-  const firstMatch = (rules, text) => rules.find(([pattern]) => pattern.test(text))?.[1] ?? null;
+  const KANA = /[぀-ヿ]/;
+  const HANGUL = /[가-힯ᄀ-ᇿ㄰-㆏]/;
+  const HAN = /[㐀-䶿一-鿿]/;
 
-  // Normalizes tags like "en-US", "fr_CA" or "ja-JP" to a supported base code, or null.
+  // Normalizes tags like "ja-JP", "zh_TW" or "ko-KR" to a supported base code, or null.
   function normalize(tag) {
     if (!tag) return null;
     const base = String(tag).toLowerCase().split(/[-_]/)[0];
     return byCode.has(base) ? base : null;
   }
 
+  // Kana means Japanese and Hangul Korean, checked in each text in turn (e.g. the word, then its
+  // sentence). Han characters alone can be Japanese kanji or Chinese hanzi, so the user's languages
+  // (`learning`) decide; with both or neither it stays open (null).
+  function byScript(texts, learning = []) {
+    const list = [texts].flat().filter(Boolean);
+    for (const text of list) {
+      if (KANA.test(text)) return "ja";
+      if (HANGUL.test(text)) return "ko";
+    }
+    if (!list.some((text) => HAN.test(text))) return null;
+    const ja = learning.includes("ja");
+    const zh = learning.includes("zh");
+    if (ja === zh) return null;
+    return zh ? "zh" : "ja";
+  }
+
+  // Whether text (e.g. [word, sentence]) is written in one of the user's languages. The extension
+  // only offers lookups for those; everything else, English included, is left alone.
+  function isLearned(texts, learning) {
+    const lang = byScript(texts, learning);
+    if (lang) return learning.includes(lang);
+    return [texts].flat().some((text) => HAN.test(text ?? "")) && learning.some((code) => code === "ja" || code === "zh");
+  }
+
+  // Japanese and Chinese, in the user's order, when Han-only text could be either; otherwise [].
+  function hanChoices(texts, learning) {
+    const unsure = [texts].flat().some((text) => HAN.test(text ?? "")) && !byScript(texts);
+    const choices = learning.filter((code) => code === "ja" || code === "zh");
+    return unsure && choices.length > 1 ? choices : [];
+  }
+
   LC.languages = Object.freeze({
     list: LANGUAGES,
+    // The languages a user can learn, i.e. add in the settings.
+    learnable: LANGUAGES.filter((lang) => lang.code !== TARGET),
     get: (code) => byCode.get(code) ?? null,
     name: (code) => byCode.get(code)?.name ?? code,
     normalize,
     target: TARGET,
-    byScript: (text) => firstMatch(SCRIPTS, text),
-    byLetters: (text) => firstMatch(LETTERS, text),
+    byScript,
+    isLearned,
+    hanChoices,
+    hasHan: (text) => HAN.test(text ?? ""),
     // Sentence boundary characters, including CJK punctuation.
-    sentenceBreak: /[.!?。！？…]+["'”’)\]]*\s*|\n{2,}/g,
+    sentenceBreak: /[.!?。！？…]+["'”’)\]」』]*\s*|\n{2,}/g,
   });
 })();

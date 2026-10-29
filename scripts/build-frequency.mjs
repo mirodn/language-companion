@@ -4,14 +4,15 @@
 // Run with: node scripts/build-frequency.mjs
 import { mkdir, writeFile } from "node:fs/promises";
 
-const LANGS = ["en", "fr", "ko", "ru", "sq", "tr"];
+// Our code -> FrequencyWords folder. The Chinese list is simplified Chinese.
+const LANGS = { en: "en", ko: "ko", zh: "zh_cn" };
 const SIZE = 20000;
 const SOURCE = "https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018";
 const OUT = new URL("../data/frequency/", import.meta.url);
 
 await mkdir(OUT, { recursive: true });
-for (const lang of LANGS) {
-  const response = await fetch(`${SOURCE}/${lang}/${lang}_50k.txt`);
+for (const [lang, folder] of Object.entries(LANGS)) {
+  const response = await fetch(`${SOURCE}/${folder}/${folder}_50k.txt`);
   if (!response.ok) throw new Error(`${lang}: HTTP ${response.status}`);
   const words = new Set();
   for (const line of (await response.text()).split("\n")) {

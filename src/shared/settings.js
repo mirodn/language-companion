@@ -13,6 +13,9 @@
     theme: "system",
     maxSelectionLength: 200,
 
+    // The languages the user learns, in the order they were added. Changed in the settings.
+    learning: ["ja"],
+
     translator: "mymemory",
     translateSentence: true,
     myMemoryEmail: "",
@@ -25,7 +28,7 @@
 
     ankiUrl: "http://127.0.0.1:8765",
     ankiKey: "",
-    // Deck per source language, e.g. { sq: "Albanian" }. Languages without one use `deck`.
+    // Deck per source language, e.g. { ja: "Japanese" }. Languages without one use `deck`.
     decks: {},
     deck: "Default",
     // "builtin": use the bundled "Language Companion" note type
@@ -39,8 +42,6 @@
     youtubeEnabled: true,
     youtubePauseOnClick: true,
     youtubeResumeOnClose: true,
-    // Off by default: every subtitle line uses translator quota.
-    youtubeDualSubtitles: false,
   });
 
   async function getSettings() {
@@ -50,6 +51,8 @@
       ...stored,
       providers: { ...DEFAULTS.providers, ...stored.providers },
       decks: { ...stored.decks },
+      // Drops languages that are no longer supported (languages.js is not loaded in every page).
+      learning: (stored.learning ?? DEFAULTS.learning).filter((code) => LC.languages?.get(code) ?? true),
     };
   }
 

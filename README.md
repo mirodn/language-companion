@@ -1,10 +1,10 @@
 # Language Companion
 
-A Firefox extension for learning languages with real content. Select a word on any page, see its translation, pronunciation, definitions and example sentences, and save it to Anki with one click.
+A Firefox extension for learning **Japanese, Korean and Chinese** with real content. Select a word on any page (or just click it in the reader), see its translation, reading, definitions and example sentences, and save it to Anki with one click.
 
 > Read → select an unknown word → understand it → save it to Anki → review later.
 
-**Status:** v0.3: web pages, YouTube subtitles, automatic translation, dictionaries, Anki integration. Netflix is next (see [Roadmap](#roadmap)).
+**Status:** v0.3: web pages, reader, YouTube subtitles, automatic translation, dictionaries, Anki integration (see [Roadmap](#roadmap)).
 
 ## Features
 
@@ -14,16 +14,17 @@ A Firefox extension for learning languages with real content. Select a word on a
 - **Stats:** words per week, day streak, languages and sites you learn from (toolbar popup → Stats)
 - Built-in "Language Companion" note type (created automatically) or your own note type with field mapping
 - Choose definitions and the example before saving, or edit any field
-- Translates Albanian, French, Japanese, Korean, Russian and Turkish into English. The language is detected automatically (writing system, Firefox's language detection, then telltale letters such as ë or ğ) and can be corrected on the card. English words get definitions only
+- **Your languages:** Japanese to start with; tick Korean or Chinese (or untick Japanese) in the settings. Lookups are offered only for text in your languages: no lookup button for English or other text, and in the reader and YouTube only those words are clickable. Right-click → Look up on other text says it isn't in your languages
+- The language comes from the writing system (kana → Japanese, Hangul → Korean). Text with only kanji/hanzi counts as Japanese or Chinese depending on which one you learn; if you learn both, Firefox's language detection and the page language decide, and the card shows a Japanese | Chinese switch to correct it
+- **Reader:** toolbar popup → **Open in reader** (or right-click → Open in reader) shows the page's article in a clean, distraction-free view where every word is clickable, which helps most with Japanese and Chinese, where words have no spaces between them. Furigana on the page is kept
 - Phrases and sentences are only translated; dictionaries and example sentences are looked up for words and short expressions
 - Pluggable translators: MyMemory (free, no key), DeepL (API key), LibreTranslate (self-hosted)
-- Dictionaries: Free Dictionary (English IPA and audio), Jisho (Japanese readings and definitions), Wiktionary (most languages), Tatoeba (example sentences)
-- **Base form:** inflected words show their base form ("courait → courir", "食べた → 食べる"). Click it (or press <kbd>B</kbd>) to look up and save the base form instead; the sentence keeps the word as written. Uses Wiktionary for most languages and Jisho for Japanese; Korean is mostly not covered
-- **Word frequency** badge ("Top 1k" … "Top 20k", or "Rare") from bundled subtitle word lists, using the base form's rank. Japanese shows the JLPT level or "Common" instead. Saved notes get a tag such as `lc::freq::top-2k`
+- Dictionaries: Jisho (Japanese readings and definitions), Wiktionary (Korean, Chinese in traditional spelling), Free Dictionary (English IPA and audio), Tatoeba (example sentences)
+- **Base form:** conjugated Japanese words show their dictionary form ("食べた → 食べる", from Jisho), and Korean nouns without their particle ("학교에 → 학교 · with the particle 에"). Click it (or press <kbd>B</kbd>) to look up and save the base form instead; the sentence keeps the word as written. Korean verb endings (갔어요 → 가다) are not covered yet
+- **Word frequency** badge: Japanese shows the JLPT level or "Common" (from Jisho); Korean and Chinese show "Top 1k" … "Top 20k" from bundled subtitle word lists, using the base form's rank. Saved notes get a tag such as `lc::freq::jlpt-n5` or `lc::freq::top-2k`
 - **Furigana** for Japanese words: readings over each kanji on the card, and in the Pronunciation field of the Anki note (shown on the back)
-- **YouTube:** click any word in the subtitles. The video pauses and the card opens. The subtitle line is saved as the sentence, with a link to the video at that moment
-- **Dual subtitles on YouTube** (optional): a translation of each subtitle line appears under it
-- A deck per language (e.g. Albanian words go to your Albanian deck), set in the settings
+- **YouTube:** click any word in the subtitles. The video pauses and the card opens. Only subtitles in your languages are clickable. The subtitle line is saved as the sentence, with a link to the video at that moment
+- A deck per language (e.g. Korean words go to your Korean deck), set in the settings
 - Light and dark theme, keyboard shortcuts, context menu, per-site disable (in settings)
 
 ## Install (development)
@@ -80,6 +81,8 @@ If the test still fails, make sure Anki is running and the origin is not listed 
 | Look up | Select text and click the small button (or change the trigger in settings) |
 | Look up | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> or right-click → Look up |
 | Look up and add right away | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> |
+| Open the reader | Toolbar popup → Open in reader, or right-click the page → Open in reader |
+| Look up in the reader | Click a word; Shift+click a second word for the phrase in between |
 | Add to Anki | <kbd>Enter</kbd> |
 | Play pronunciation | <kbd>P</kbd> |
 | Edit fields | <kbd>E</kbd> |
@@ -91,8 +94,6 @@ If the test still fails, make sure Anki is running and the origin is not listed 
 Turn on subtitles in the player (any track, including auto-generated and auto-translated ones), then click a word. Shift+click a second word to look up the phrase between the two. The card works in fullscreen too. The video resumes when the card closes; you can turn pausing and resuming off in settings.
 
 Saved notes get the subtitle line as the sentence, a Source link like `https://www.youtube.com/watch?v=…&t=83s` titled "Video title (1:23)", and the tag `lc::youtube`. The source language comes from the selected subtitle track.
-
-**Dual subtitles:** turn on "Translation under YouTube subtitles" in the toolbar popup or the settings. Each line is translated with your translator, so it uses that translator's quota: MyMemory allows about 100 lines a day (about 1,000 with an email in the settings), DeepL Free about 500,000 characters a month. Auto-generated subtitles appear word by word; a line is translated once it has stayed on screen for a moment. English subtitles are not translated.
 
 Global shortcuts can be changed in `about:addons` → ⚙ → Manage Extension Shortcuts.
 
@@ -107,6 +108,8 @@ src/
   content/       selection handling and the in-page card (shadow DOM)
   action/        toolbar popup
   stats/         stats page and the numbers behind it
+  reader/        reader page and the script that finds the article
+  vendor/        Mozilla Readability (Apache-2.0)
 data/frequency/  bundled word frequency lists (built by scripts/build-frequency.mjs)
   options/       settings page
 test/            node:test unit tests with saved API responses
@@ -137,8 +140,12 @@ Selected text and the surrounding sentence go to the translation and dictionary 
 
 ## Credits
 
+Reader: [Readability](https://github.com/mozilla/readability) by Mozilla, Apache-2.0 (see [src/vendor/readability/LICENSE.md](src/vendor/readability/LICENSE.md)).
+
 Word frequency lists: [FrequencyWords](https://github.com/hermitdave/FrequencyWords) by Hermit Dave, CC BY-SA 4.0 (see [data/frequency/ATTRIBUTION.md](data/frequency/ATTRIBUTION.md)).
 
 ## Roadmap
 
-- **v0.4:** Netflix, audio clips and screenshots, more card templates, AI translation provider
+- **Chinese dictionary:** bundled CC-CEDICT for definitions and pinyin, also for simplified spellings (Wiktionary only covers traditional ones)
+- **Korean verb endings:** 갔어요 → 가다
+- Audio clips and screenshots from YouTube, more card templates, AI translation provider

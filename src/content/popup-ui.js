@@ -345,7 +345,7 @@
           h("button", { class: "icon-button", title: "Pronounce (P)", onClick: () => this.playAudio() }, "🔊"),
           h("span", { class: "spacer" }),
           this.renderFrequency(),
-          this.renderLanguageSelect(),
+          this.renderLanguage(),
           this.closeButton(),
         ),
         this.renderBaseForm(),
@@ -399,8 +399,16 @@
               ),
             ),
           ),
-        result.errors.length > 0 && h("div", { class: "warnings", title: result.errors.join("\n") }, `Some sources failed: ${result.errors.join("; ")}`),
+        this.renderWarnings(),
       ];
+    }
+
+    // Failures worth knowing about, e.g. a wrong DeepL key. Timeouts (Tatoeba is often slow) are
+    // left out: there is nothing to do about them, and the card is complete without examples.
+    renderWarnings() {
+      const errors = this.state.result.errors.filter((error) => !/timed out/i.test(error));
+      if (!errors.length) return null;
+      return h("div", { class: "warnings", title: errors.join("\n") }, `Some sources failed: ${errors.join("; ")}`);
     }
 
     renderFrequency() {
@@ -433,22 +441,26 @@
       );
     }
 
-    // Source language (detected, can be corrected) → English.
-    renderLanguageSelect() {
+    // The word's language as a quiet label. Han-only text that could be Japanese or Chinese (and
+    // the user learns both) gets a switch instead; everything else is clear from the script.
+    renderLanguage() {
       const { result } = this.state;
+      const choices = result.languageChoices ?? [];
+      if (choices.length < 2) return h("span", { class: "lang" }, languages.name(result.sourceLang));
       return h(
         "span",
-        { class: "langs" },
-        h(
-          "select",
-          {
-            class: "lang",
-            title: `Detected language: ${languages.name(result.sourceLang)}. Change it if the guess is wrong.`,
-            onChange: (event) => this.handlers.onSourceLangChange(event.target.value),
-          },
-          languages.list.map((lang) => h("option", { value: lang.code, selected: lang.code === result.sourceLang }, lang.code.toUpperCase())),
+        { class: "lang-switch", role: "group", "aria-label": "Language" },
+        choices.map((code) =>
+          h(
+            "button",
+            {
+              class: code === result.sourceLang ? "active" : "",
+              "aria-pressed": String(code === result.sourceLang),
+              onClick: () => code !== result.sourceLang && this.handlers.onSourceLangChange(code),
+            },
+            languages.name(code),
+          ),
         ),
-        h("span", { class: "muted" }, `→ ${result.targetLang.toUpperCase()}`),
       );
     }
 

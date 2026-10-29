@@ -64,30 +64,52 @@ function onSettingChanged(path) {
   if (path === "ankiUrl" || path === "libreUrl") updateGrantButtons();
 }
 
-// --- Decks per language ----------------------------------------------------------
+// --- Languages and their decks -----------------------------------------------------
 
-const deckLanguages = () => languages.list.filter((lang) => lang.code !== languages.target);
+// Deck names from Anki, kept so the rows can be rebuilt when a language is added or removed.
+let ankiDecks = [];
 
-// A language without its own deck shows (and uses) the fallback deck from deckFor.
-function createDeckRows() {
-  const rows = deckLanguages().map((lang) => {
+// One row per language: a checkbox and, when checked, its deck. At least one stays checked.
+function renderLanguages() {
+  const rows = languages.learnable.map(({ code, name }) => {
+    const learning = settings.learning.includes(code);
     const row = document.createElement("div");
     row.className = "row";
+
     const label = document.createElement("label");
-    label.htmlFor = `deck-${lang.code}`;
-    label.textContent = lang.name;
-    const select = document.createElement("select");
-    select.id = `deck-${lang.code}`;
-    select.addEventListener("change", () => save(`decks.${lang.code}`, select.value));
-    row.append(label, select);
+    label.className = "choice";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = learning;
+    checkbox.disabled = learning && settings.learning.length === 1;
+    if (checkbox.disabled) label.title = "At least one language stays selected.";
+    checkbox.addEventListener("change", async () => {
+      // Keeps the order in which languages were added; the first one wins for kanji-only text.
+      const next = checkbox.checked ? [...settings.learning, code] : settings.learning.filter((other) => other !== code);
+      await save("learning", next);
+      renderLanguages();
+    });
+    label.append(checkbox, ` ${name}`);
+    row.append(label);
+
+    if (learning) {
+      const select = document.createElement("select");
+      select.id = `deck-${code}`;
+      select.title = `Deck for ${name}`;
+      select.addEventListener("change", () => save(`decks.${code}`, select.value));
+      row.append(select);
+    }
     return row;
   });
-  $("#deck-rows").replaceChildren(...rows);
+  $("#language-rows").replaceChildren(...rows);
+  fillDeckSelects(ankiDecks);
 }
 
+// A language without its own deck shows (and uses) the fallback deck from deckFor.
 function fillDeckSelects(decks) {
-  for (const lang of deckLanguages()) {
-    fillSelect($(`#deck-${lang.code}`), decks, settingsStore.deckFor(settings, lang.code));
+  ankiDecks = decks;
+  for (const code of settings.learning) {
+    fillSelect($(`#deck-${code}`), decks, settingsStore.deckFor(settings, code));
   }
 }
 
@@ -185,8 +207,7 @@ async function updateMapping() {
 
 async function init() {
   settings = await settingsStore.getSettings();
-  createDeckRows();
-  fillDeckSelects([]);
+  renderLanguages();
   bindInputs();
   bindGrantButtons();
   updateTranslatorRows();

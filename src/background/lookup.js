@@ -5,26 +5,33 @@ import { frequencyLabel } from "./frequency.js";
 const { languages } = globalThis.LC;
 
 // Picks the source language: chosen on the card > known content language (e.g. the subtitle
-// track) > writing system > detection > telltale letters > page language > English.
-export async function resolveSourceLang(req, detectLanguage) {
+// track) > writing system > detection > page language > English. `learning` (the user's languages)
+// decides whether Han characters alone are Japanese or Chinese.
+export async function resolveSourceLang(req, detectLanguage, learning = []) {
   const requested = req.sourceLang && req.sourceLang !== "auto" ? req.sourceLang : null;
   const explicit = languages.normalize(requested) ?? languages.normalize(req.contentLang);
   if (explicit) return explicit;
 
   const text = req.sentence || req.text;
-  const script = languages.byScript(req.text) ?? languages.byScript(text);
+  const script = languages.byScript([req.text, req.sentence], learning);
   if (script) return script;
 
   if (detectLanguage) {
     try {
       const detected = await detectLanguage(text);
-      const supported = (detected?.languages ?? []).map((l) => languages.normalize(l.language)).find(Boolean);
+      // Han characters can only be Japanese or Chinese, whatever language the sentence around them is in.
+      const fits = (code) => code && (!languages.hasHan(req.text) || code === "ja" || code === "zh");
+      const supported = (detected?.languages ?? []).map((l) => languages.normalize(l.language)).find(fits);
       if (detected?.isReliable && supported) return supported;
     } catch {
       // Detection is best effort.
     }
   }
-  return languages.byLetters(req.text) ?? languages.byLetters(text) ?? languages.normalize(req.pageLang) ?? "en";
+  const page = languages.normalize(req.pageLang);
+  if (page) return page;
+  // Han characters without any other hint: the user's first of Japanese and Chinese.
+  if (languages.hasHan(req.text)) return learning.find((code) => code === "ja" || code === "zh") ?? "ja";
+  return "en";
 }
 
 // Dictionaries and example sources only know single words and short expressions, and the
@@ -40,7 +47,7 @@ function pickTranslator(settings, src, tgt) {
 }
 
 async function resolveLangs(req, settings, ctx) {
-  const src = await resolveSourceLang(req, ctx.detectLanguage);
+  const src = await resolveSourceLang(req, ctx.detectLanguage, settings.learning);
   return { text: req.text.trim(), src, tgt: languages.target };
 }
 
@@ -78,15 +85,6 @@ export async function lookupTranslation(req, settings, ctx = {}) {
     sentenceTranslation: sentenceResult.status === "fulfilled" ? sentenceResult.value.translation : "",
     errors: errorsOf([wordResult, sentenceResult]),
   };
-}
-
-// One line of text such as a subtitle: translation only. Not cached, so a long video doesn't push
-// word lookups out of the cache; youtube.js keeps its own cache per page.
-export async function translateLine(req, settings, ctx = {}) {
-  const { text, src, tgt } = await resolveLangs(req, settings, ctx);
-  if (src === tgt) return { translation: "", sourceLang: src };
-  const { translation } = await pickTranslator(settings, src, tgt).lookup({ text, src, tgt }, settings, ctx);
-  return { translation, sourceLang: src };
 }
 
 // IPA, audio, definitions, examples, base form and frequency from every enabled provider, in parallel.
@@ -139,10 +137,10 @@ export function merge(parts, settings) {
 // "cheval", and an inflected form that is common on its own ("est") keeps its rank.
 async function frequencyOf(baseWord, text, src, frequency) {
   const rank = await frequency.rank(src, text);
-  // No list for this language, or the word can't be rated (see NO_RARE in frequency.js).
-  if (rank == null) return null;
-  const baseRank = (baseWord ? await frequency.rank(src, baseWord) : null) ?? Infinity;
-  return frequencyLabel(Math.min(rank, baseRank));
+  const baseRank = baseWord ? await frequency.rank(src, baseWord) : null;
+  // No list for this language, or neither word can be rated (see NO_RARE in frequency.js).
+  if (rank == null && baseRank == null) return null;
+  return frequencyLabel(Math.min(rank ?? Infinity, baseRank ?? Infinity));
 }
 
 function dedupeBy(items, key) {

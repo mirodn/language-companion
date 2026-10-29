@@ -8,7 +8,6 @@
     GET_CARD_CSS: "getCardCss",
     LOOKUP: "lookup",
     LOOKUP_DETAILS: "lookupDetails",
-    TRANSLATE_LINE: "translateLine",
     ANKI_STATUS: "ankiStatus",
     ANKI_DECKS: "ankiDecks",
     ANKI_MODELS: "ankiModels",
@@ -16,6 +15,7 @@
     ANKI_CHECK_DUPLICATE: "ankiCheckDuplicate",
     ANKI_ADD_NOTE: "ankiAddNote",
     ANKI_BROWSE: "ankiBrowse",
+    OPEN_READER: "openReader",
     QUEUE_FLUSH: "queueFlush",
     LOG_REMOVE: "logRemove",
     // Background -> content

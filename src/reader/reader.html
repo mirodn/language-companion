@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Reader</title>
+    <link rel="stylesheet" href="reader.css" />
+    <!-- The same scripts as on web pages, so lookups, the card and Anki work as usual. -->
+    <script src="../shared/messages.js"></script>
+    <script src="../shared/languages.js"></script>
+    <script src="../shared/settings.js"></script>
+    <script src="../shared/furigana.js"></script>
+    <script src="../content/selection.js"></script>
+    <script src="../content/popup-ui.js"></script>
+    <script src="../content/content.js"></script>
+    <script src="reader.js"></script>
+  </head>
+  <body>
+    <div class="toolbar">
+      <a id="original" class="muted" href="#" target="_blank" rel="noreferrer"></a>
+      <span class="spacer"></span>
+      <button type="button" id="smaller" title="Smaller text">A−</button>
+      <button type="button" id="larger" title="Larger text">A+</button>
+    </div>
+    <main>
+      <header>
+        <h1 id="title"></h1>
+        <p id="byline" class="muted"></p>
+        <p class="hint muted">Click a word to look it up. Shift+click a second word for the phrase in between.</p>
+      </header>
+      <article id="article"></article>
+    </main>
+  </body>
+</html>

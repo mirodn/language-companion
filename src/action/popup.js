@@ -34,9 +34,6 @@ async function init() {
   $("#youtube-enabled").checked = settings.youtubeEnabled;
   $("#youtube-enabled").addEventListener("change", (e) => settingsStore.saveSettings({ youtubeEnabled: e.target.checked }));
 
-  $("#youtube-dual").checked = settings.youtubeDualSubtitles;
-  $("#youtube-dual").addEventListener("change", (e) => settingsStore.saveSettings({ youtubeDualSubtitles: e.target.checked }));
-
   $("#open-options").addEventListener("click", (e) => {
     e.preventDefault();
     browser.runtime.openOptionsPage();
@@ -47,6 +44,15 @@ async function init() {
     e.preventDefault();
     browser.tabs.create({ url: browser.runtime.getURL("src/stats/stats.html") });
     window.close();
+  });
+
+  // Clean view of the current page's article with clickable words (see src/reader).
+  $("#open-reader").addEventListener("click", async () => {
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    const response = await browser.runtime.sendMessage({ type: MSG.OPEN_READER, tabId: tab.id });
+    if (response.ok) return window.close();
+    $("#reader-error").textContent = response.error;
+    $("#reader-error").hidden = false;
   });
 
   showSummary();

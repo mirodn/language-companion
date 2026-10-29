@@ -141,11 +141,42 @@
   text-decoration: underline;
 }
 
-.langs {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.lang {
   flex-shrink: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Japanese | Chinese, for Han-only text when both are learned */
+.lang-switch {
+  display: flex;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.lang-switch button {
+  all: unset;
+  padding: 2px 8px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.lang-switch button + button {
+  border-left: 1px solid var(--border);
+}
+
+.lang-switch button.active {
+  color: var(--fg);
+  background: var(--bg-subtle);
+  font-weight: 600;
+}
+
+.lang-switch button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .translation {

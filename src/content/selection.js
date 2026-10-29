@@ -12,8 +12,11 @@
     if (!selection || selection.isCollapsed || selection.rangeCount === 0) return null;
     const text = selection.toString().replace(/\s+/g, " ").trim();
     if (!text || text.length > maxLength) return null;
+    return fromRange(selection.getRangeAt(0), text);
+  }
 
-    const range = selection.getRangeAt(0);
+  // The same for any range, e.g. a clicked word in the reader.
+  function fromRange(range, text = range.toString().replace(/\s+/g, " ").trim()) {
     const element = elementOf(range.startContainer);
     return {
       text,
@@ -65,5 +68,5 @@
       .trim();
   }
 
-  LC.selection = { current };
+  LC.selection = { current, fromRange };
 })();
