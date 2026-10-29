@@ -6,9 +6,6 @@
     enabled: true,
     disabledSites: [],
 
-    sourceLang: "auto",
-    targetLang: "en",
-
     // "icon": show a small button next to the selection
     // "instant": open the card right after selecting
     // "shortcut": only open via keyboard shortcut or context menu
@@ -22,12 +19,14 @@
     deeplKey: "",
     libreUrl: "",
     libreKey: "",
-    providers: { freedictionary: true, wiktionary: true, tatoeba: true },
+    providers: { freedictionary: true, jisho: true, wiktionary: true, tatoeba: true },
     maxDefinitions: 4,
     maxExamples: 3,
 
     ankiUrl: "http://127.0.0.1:8765",
     ankiKey: "",
+    // Deck per source language, e.g. { sq: "Albanian" }. Languages without one use `deck`.
+    decks: {},
     deck: "Default",
     // "builtin": use the bundled "Language Companion" note type
     // "mapped": use an existing note type and map fields in the options page
@@ -48,7 +47,12 @@
       ...DEFAULTS,
       ...stored,
       providers: { ...DEFAULTS.providers, ...stored.providers },
+      decks: { ...stored.decks },
     };
+  }
+
+  function deckFor(settings, lang) {
+    return settings.decks[lang] || settings.deck;
   }
 
   function saveSettings(patch) {
@@ -59,5 +63,5 @@
     return !settings.enabled || settings.disabledSites.includes(hostname);
   }
 
-  LC.settings = Object.freeze({ DEFAULTS, getSettings, saveSettings, isSiteDisabled });
+  LC.settings = Object.freeze({ DEFAULTS, getSettings, saveSettings, isSiteDisabled, deckFor });
 })();

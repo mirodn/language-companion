@@ -7,45 +7,40 @@
   // deepl: DeepL source code, or null if DeepL does not support the language
   // cjk: no spaces between words; affects sentence splitting and future furigana support
   const LANGUAGES = [
-    { code: "ar", name: "Arabic", tatoeba: "ara", deepl: "AR" },
-    { code: "bg", name: "Bulgarian", tatoeba: "bul", deepl: "BG" },
-    { code: "cs", name: "Czech", tatoeba: "ces", deepl: "CS" },
-    { code: "da", name: "Danish", tatoeba: "dan", deepl: "DA" },
-    { code: "de", name: "German", tatoeba: "deu", deepl: "DE" },
-    { code: "el", name: "Greek", tatoeba: "ell", deepl: "EL" },
     { code: "en", name: "English", tatoeba: "eng", deepl: "EN" },
-    { code: "es", name: "Spanish", tatoeba: "spa", deepl: "ES" },
-    { code: "fi", name: "Finnish", tatoeba: "fin", deepl: "FI" },
     { code: "fr", name: "French", tatoeba: "fra", deepl: "FR" },
-    { code: "he", name: "Hebrew", tatoeba: "heb", deepl: "HE" },
-    { code: "hi", name: "Hindi", tatoeba: "hin", deepl: null },
-    { code: "hu", name: "Hungarian", tatoeba: "hun", deepl: "HU" },
-    { code: "id", name: "Indonesian", tatoeba: "ind", deepl: "ID" },
-    { code: "it", name: "Italian", tatoeba: "ita", deepl: "IT" },
     { code: "ja", name: "Japanese", tatoeba: "jpn", deepl: "JA", cjk: true },
     { code: "ko", name: "Korean", tatoeba: "kor", deepl: "KO" },
-    { code: "nl", name: "Dutch", tatoeba: "nld", deepl: "NL" },
-    { code: "no", name: "Norwegian", tatoeba: "nob", deepl: "NB" },
-    { code: "pl", name: "Polish", tatoeba: "pol", deepl: "PL" },
-    { code: "pt", name: "Portuguese", tatoeba: "por", deepl: "PT" },
-    { code: "ro", name: "Romanian", tatoeba: "ron", deepl: "RO" },
     { code: "ru", name: "Russian", tatoeba: "rus", deepl: "RU" },
-    { code: "sv", name: "Swedish", tatoeba: "swe", deepl: "SV" },
-    { code: "th", name: "Thai", tatoeba: "tha", deepl: null, cjk: true },
+    { code: "sq", name: "Albanian", tatoeba: "sqi", deepl: null },
     { code: "tr", name: "Turkish", tatoeba: "tur", deepl: "TR" },
-    { code: "uk", name: "Ukrainian", tatoeba: "ukr", deepl: "UK" },
-    { code: "vi", name: "Vietnamese", tatoeba: "vie", deepl: "VI" },
-    { code: "zh", name: "Chinese", tatoeba: "cmn", deepl: "ZH", cjk: true },
   ];
+
+  // Everything is translated into English; the other languages are the ones being learned.
+  const TARGET = "en";
 
   const byCode = new Map(LANGUAGES.map((lang) => [lang.code, lang]));
 
-  // Normalizes tags like "en-US", "pt_BR" or "zh-Hans" to a supported base code, or null.
+  // Writing systems that identify a language on their own within this language list.
+  // Kanji alone (no kana) still means Japanese, since Chinese is not supported.
+  const SCRIPTS = [
+    [/[\u3040-\u30ff]/, "ja"],
+    [/[\uac00-\ud7af\u1100-\u11ff]/, "ko"],
+    [/[\u4e00-\u9fff]/, "ja"],
+    [/[\u0400-\u04ff]/, "ru"],
+  ];
+  // Letters only one of the Latin-script languages here uses. Ambiguous ones (ç, ö, ü) are left out.
+  const LETTERS = [
+    [/[ğışİ]/i, "tr"],
+    [/ë/i, "sq"],
+    [/[éèêàâîôûùœ]/i, "fr"],
+  ];
+  const firstMatch = (rules, text) => rules.find(([pattern]) => pattern.test(text))?.[1] ?? null;
+
+  // Normalizes tags like "en-US", "fr_CA" or "ja-JP" to a supported base code, or null.
   function normalize(tag) {
     if (!tag) return null;
     const base = String(tag).toLowerCase().split(/[-_]/)[0];
-    if (base === "nb" || base === "nn") return "no";
-    if (base === "iw") return "he";
     return byCode.has(base) ? base : null;
   }
 
@@ -54,6 +49,9 @@
     get: (code) => byCode.get(code) ?? null,
     name: (code) => byCode.get(code)?.name ?? code,
     normalize,
+    target: TARGET,
+    byScript: (text) => firstMatch(SCRIPTS, text),
+    byLetters: (text) => firstMatch(LETTERS, text),
     // Sentence boundary characters, including CJK punctuation.
     sentenceBreak: /[.!?。！？…]+["'”’)\]]*\s*|\n{2,}/g,
   });

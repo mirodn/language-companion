@@ -84,3 +84,8 @@ kbd {
     gap: 4px;
   }
 }
+
+h3 {
+  margin: 20px 0 4px;
+  font-size: 14px;
+}

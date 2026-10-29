@@ -15,18 +15,6 @@ header {
   font-size: 13px;
 }
 
-.pair {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.pair select {
-  flex: 1;
-  min-width: 0;
-}
-
 .toggle {
   display: flex;
   gap: 8px;

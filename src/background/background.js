@@ -1,22 +1,16 @@
 import "../shared/messages.js";
-import "../shared/languages.js";
 import "../shared/settings.js";
 import { createAnkiClient, buildNote, duplicateQuery, resolveNoteType, NOTE_TYPE } from "./anki.js";
-import { lookup } from "./lookup.js";
+import { lookupDetails, lookupTranslation } from "./lookup.js";
 import { getCached, setCached } from "./cache.js";
 
-const { MSG, languages, settings: settingsStore } = globalThis.LC;
+const { MSG, settings: settingsStore } = globalThis.LC;
 
 // --- Setup ------------------------------------------------------------------
 
-browser.runtime.onInstalled.addListener(async ({ reason }) => {
+browser.runtime.onInstalled.addListener(({ reason }) => {
   setupMenus();
-  if (reason === "install") {
-    // Default the target language to the browser UI language.
-    const uiLang = languages.normalize(browser.i18n.getUILanguage());
-    if (uiLang) await settingsStore.saveSettings({ targetLang: uiLang });
-    browser.runtime.openOptionsPage();
-  }
+  if (reason === "install") browser.runtime.openOptionsPage();
 });
 browser.runtime.onStartup.addListener(setupMenus);
 
@@ -56,13 +50,18 @@ async function ensureNoteType(client, settings) {
 
 // --- Messages -----------------------------------------------------------------
 
+const lookupContext = {
+  detectLanguage: (text) => browser.i18n.detectLanguage(text),
+  cache: { get: getCached, set: setCached },
+};
+
 const handlers = {
   async [MSG.LOOKUP](message) {
-    const settings = await settingsStore.getSettings();
-    return lookup(message, settings, {
-      detectLanguage: (text) => browser.i18n.detectLanguage(text),
-      cache: { get: getCached, set: setCached },
-    });
+    return lookupTranslation(message, await settingsStore.getSettings(), lookupContext);
+  },
+
+  async [MSG.LOOKUP_DETAILS](message) {
+    return lookupDetails(message, await settingsStore.getSettings(), lookupContext);
   },
 
   async [MSG.GET_CARD_CSS]() {

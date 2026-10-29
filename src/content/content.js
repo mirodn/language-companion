@@ -29,8 +29,9 @@
         onAdd: (card) => addToAnki(card),
         onOpenInAnki: (card) => send(MSG.ANKI_BROWSE, { card }).catch((error) => ui.setAnkiState("error", error.message)),
         onSourceLangChange: (sourceLang) => lastRequest && runLookup({ ...lastRequest, sourceLang }),
+        // The chosen deck becomes the deck for this card's language.
         onDeckChange: (card) => {
-          LC.settings.saveSettings({ deck: card.deck });
+          LC.settings.saveSettings({ decks: { ...settings.decks, [card.sourceLang]: card.deck } });
           checkDuplicate(card);
         },
         onCardChanged: (card) => checkDuplicate(card),
@@ -60,30 +61,36 @@
     const card = await getUI();
     card.open(request.rect, request.text, request.context);
 
+    const payload = {
+      text: request.text,
+      sentence: request.sentence,
+      pageLang: request.pageLang,
+      sourceLang: request.sourceLang,
+      contentLang: request.contentLang,
+    };
+    // Details (dictionaries, examples) are slower, so they fill in once the card is shown.
+    const details = send(MSG.LOOKUP_DETAILS, payload).catch((error) => ({ errors: [error.message] }));
+
     let result;
     try {
-      result = await send(MSG.LOOKUP, {
-        text: request.text,
-        sentence: request.sentence,
-        pageLang: request.pageLang,
-        sourceLang: request.sourceLang,
-        contentLang: request.contentLang,
-      });
+      result = await send(MSG.LOOKUP, payload);
     } catch (error) {
       if (id === lookupId) card.setLookupError(error.message);
       return;
     }
     if (id !== lookupId) return;
     card.setResult(result);
+    const detailsShown = details.then((data) => id === lookupId && card.setDetails(data));
 
     try {
-      card.setDecks(await send(MSG.ANKI_DECKS), settings.deck);
+      card.setDecks(await send(MSG.ANKI_DECKS), LC.settings.deckFor(settings, result.sourceLang));
     } catch (error) {
       if (id === lookupId) card.setAnkiState("error", error.message);
       return;
     }
     if (id !== lookupId) return;
     await checkDuplicate(card.getCard());
+    await detailsShown;
     if (autoAdd && id === lookupId) card.add();
   }
 

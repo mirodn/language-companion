@@ -58,7 +58,11 @@
       const from = Math.max(sentenceStart, start - MAX_SENTENCE_LENGTH / 2);
       sentence = full.slice(from, from + MAX_SENTENCE_LENGTH);
     }
-    return sentence.replace(/\s+/g, " ").trim();
+    // Drops citation markers such as Wikipedia's "[1]" or "[citation needed]".
+    return sentence
+      .replace(/\[(?:\d+|[a-z]|citation needed)\]/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
   }
 
   LC.selection = { current };

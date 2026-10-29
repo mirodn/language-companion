@@ -3,8 +3,8 @@ import { fetchJson } from "./http.js";
 
 const { languages } = globalThis.LC;
 
-// Example sentences with human translations from tatoeba.org. The API can be slow,
-// so it gets a longer timeout; the card renders without it if it does not answer.
+// Example sentences with human translations from tatoeba.org. It usually answers within
+// 1-2 seconds; the short timeout keeps an outage from holding up "Add to Anki" for long.
 export default {
   id: "tatoeba",
   name: "Tatoeba",
@@ -23,7 +23,7 @@ export default {
       limit: String(settings.maxExamples ?? 3),
     });
     const url = `https://api.tatoeba.org/unstable/sentences?${params}`;
-    return { examples: parse(await fetchJson(this.id, url, {}, { timeoutMs: 12000, ...ctx })) };
+    return { examples: parse(await fetchJson(this.id, url, {}, { timeoutMs: 5000, ...ctx })) };
   },
 };
 

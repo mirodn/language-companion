@@ -19,18 +19,6 @@
       </header>
 
       <section>
-        <h2>Languages</h2>
-        <div class="row">
-          <label for="sourceLang">Language you are learning</label>
-          <select id="sourceLang" data-setting="sourceLang"></select>
-        </div>
-        <div class="row">
-          <label for="targetLang">Translate into</label>
-          <select id="targetLang" data-setting="targetLang"></select>
-        </div>
-      </section>
-
-      <section>
         <h2>Anki</h2>
         <p class="muted">
           Requires Anki Desktop with the
@@ -54,10 +42,9 @@
             <span id="anki-status" class="muted"></span>
           </div>
         </div>
-        <div class="row">
-          <label for="deck">Default deck</label>
-          <select id="deck" data-setting="deck"></select>
-        </div>
+        <h3>Decks</h3>
+        <p class="muted small">Words are translated into English and saved to the deck of their language.</p>
+        <div id="deck-rows"></div>
         <div class="row">
           <span>Note type</span>
           <div>
@@ -125,8 +112,9 @@
           <span>Sources</span>
           <div>
             <label class="choice"><input type="checkbox" data-setting="providers.freedictionary" /> Free Dictionary <span class="muted">(English: IPA, audio, definitions)</span></label>
+            <label class="choice"><input type="checkbox" data-setting="providers.jisho" /> Jisho <span class="muted">(Japanese: readings for furigana, definitions)</span></label>
             <label class="choice"><input type="checkbox" data-setting="providers.wiktionary" /> Wiktionary <span class="muted">(definitions in English, most languages)</span></label>
-            <label class="choice"><input type="checkbox" data-setting="providers.tatoeba" /> Tatoeba <span class="muted">(example sentences, can be slow)</span></label>
+            <label class="choice"><input type="checkbox" data-setting="providers.tatoeba" /> Tatoeba <span class="muted">(example sentences)</span></label>
           </div>
         </div>
         <div class="row">

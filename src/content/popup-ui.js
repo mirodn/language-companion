@@ -2,7 +2,7 @@
 // so page styles cannot leak in. All provider text is set via textContent, never as HTML.
 (() => {
   const LC = globalThis.LC;
-  const { languages } = LC;
+  const { languages, furigana } = LC;
 
   const CARD_WIDTH = 360;
   const GAP = 8;
@@ -19,6 +19,11 @@
     }
     el.append(...children.flat().filter((child) => child != null && child !== false));
     return el;
+  }
+
+  // The word with furigana over its kanji when a reading is known.
+  function withFurigana(word, reading) {
+    return furigana.segments(word, reading).map(({ text, rt }) => (rt ? h("ruby", {}, text, h("rt", {}, rt)) : text));
   }
 
   // Renders `sentence` with the first occurrence of `word` wrapped in <mark>.
@@ -156,11 +161,30 @@
       this.handlers.onClose?.();
     }
 
+    // The translation part of a lookup; details follow via setDetails.
     setResult(result) {
       if (!this.state) return;
       Object.assign(this.state, {
         status: "ready",
-        result: { ...result },
+        detailsLoading: true,
+        result: { ipa: "", reading: "", audioUrl: "", definitions: [], examples: [], ...result },
+        selectedExample: -1,
+      });
+      this.render();
+    }
+
+    setDetails(details) {
+      if (!this.state?.result) return;
+      const { result } = this.state;
+      // The pronunciation may already have been edited.
+      result.ipa ||= details.ipa ?? "";
+      result.reading ||= details.reading ?? "";
+      result.audioUrl = details.audioUrl ?? "";
+      result.definitions = details.definitions ?? [];
+      result.examples = details.examples ?? [];
+      result.errors = [...result.errors, ...(details.errors ?? [])];
+      Object.assign(this.state, {
+        detailsLoading: false,
         // Pre-select the first two definitions; that is usually enough on a card.
         selectedDefinitions: new Set(result.definitions.slice(0, 2).map((_, i) => i)),
         selectedExample: result.examples.length ? 0 : -1,
@@ -196,6 +220,7 @@
         translation: result.translation,
         definitions: result.definitions.filter((_, i) => selectedDefinitions.has(i)).map((d) => d.text),
         ipa: result.ipa,
+        reading: result.reading,
         audioUrl: result.audioUrl,
         sentence: result.sentence,
         sentenceTranslation: result.sentenceTranslation,
@@ -212,8 +237,8 @@
     // --- Actions ---------------------------------------------------------------
 
     canAdd() {
-      const { status, anki } = this.state ?? {};
-      return status === "ready" && !["adding", "added", "duplicate", "checking"].includes(anki.state);
+      const { status, detailsLoading, anki } = this.state ?? {};
+      return status === "ready" && !detailsLoading && !["adding", "added", "duplicate", "checking"].includes(anki.state);
     }
 
     add() {
@@ -283,7 +308,9 @@
             : s.editing
               ? this.renderEditor()
               : this.renderResult();
-      this.card.replaceChildren(...body, s.status === "ready" ? this.renderFooter() : null);
+      this.card.replaceChildren(
+        ...[...body, s.status === "ready" && this.renderFooter()].filter((child) => child != null && child !== false),
+      );
       this.position();
     }
 
@@ -297,7 +324,7 @@
         h(
           "div",
           { class: "header" },
-          h("div", { class: "word" }, result.word),
+          h("div", { class: "word" }, withFurigana(result.word, result.reading)),
           result.ipa && h("span", { class: "ipa" }, result.ipa),
           h("button", { class: "icon-button", title: "Pronounce (P)", onClick: () => this.playAudio() }, "🔊"),
           h("span", { class: "spacer" }),
@@ -312,6 +339,7 @@
             h("div", { class: "sentence" }, highlighted(result.sentence, result.word)),
             result.sentenceTranslation && h("div", { class: "muted" }, result.sentenceTranslation),
           ),
+        this.state.detailsLoading && h("div", { class: "loading" }, "Loading definitions…"),
         result.definitions.length > 0 &&
           h(
             "div",
@@ -357,16 +385,22 @@
       ];
     }
 
+    // Source language (detected, can be corrected) → English.
     renderLanguageSelect() {
       const { result } = this.state;
       return h(
-        "select",
-        {
-          class: "lang",
-          title: `Source language (target: ${languages.name(result.targetLang)})`,
-          onChange: (event) => this.handlers.onSourceLangChange(event.target.value),
-        },
-        languages.list.map((lang) => h("option", { value: lang.code, selected: lang.code === result.sourceLang }, lang.code.toUpperCase())),
+        "span",
+        { class: "langs" },
+        h(
+          "select",
+          {
+            class: "lang",
+            title: `Detected language: ${languages.name(result.sourceLang)}. Change it if the guess is wrong.`,
+            onChange: (event) => this.handlers.onSourceLangChange(event.target.value),
+          },
+          languages.list.map((lang) => h("option", { value: lang.code, selected: lang.code === result.sourceLang }, lang.code.toUpperCase())),
+        ),
+        h("span", { class: "muted" }, `→ ${result.targetLang.toUpperCase()}`),
       );
     }
 
@@ -383,7 +417,7 @@
         h("div", { class: "header" }, h("div", { class: "word" }, "Edit card"), h("span", { class: "spacer" }), this.closeButton()),
         field("Word", "word"),
         field("Translation", "translation"),
-        field("Pronunciation", "ipa"),
+        result.sourceLang === "ja" ? field("Reading (furigana)", "reading") : field("Pronunciation", "ipa"),
         field("Sentence", "sentence", true),
         field("Sentence translation", "sentenceTranslation", true),
       ];

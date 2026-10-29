@@ -1,4 +1,7 @@
 // AnkiConnect client (https://git.sr.ht/~foosoft/anki-connect) and note building.
+import "../shared/furigana.js";
+
+const { furigana } = globalThis.LC;
 
 export const NOTE_TYPE = "Language Companion";
 
@@ -68,7 +71,7 @@ export function createAnkiClient({ url, key, fetch: fetchImpl = globalThis.fetch
 }
 
 // Builds an AnkiConnect note from the card the user saw (and maybe edited).
-// card: { word, translation, definitions[], ipa, audioUrl, sentence, sentenceTranslation,
+// card: { word, translation, definitions[], ipa, reading, audioUrl, sentence, sentenceTranslation,
 //         example: {text, translation}|null, pageUrl, pageTitle, sourceLang, targetLang, deck, tags? }
 export function buildNote(card, settings) {
   const values = {
@@ -77,7 +80,8 @@ export function buildNote(card, settings) {
     Definition: card.definitions.length > 1
       ? `<ol>${card.definitions.map((d) => `<li>${escapeHtml(d)}</li>`).join("")}</ol>`
       : escapeHtml(card.definitions[0] ?? ""),
-    Pronunciation: escapeHtml(card.ipa),
+    // Japanese: the word with furigana, so the reading shows on the back of the card.
+    Pronunciation: card.reading ? rubyHtml(card.word, card.reading) : escapeHtml(card.ipa),
     Audio: "",
     Sentence: highlight(card.sentence, card.word),
     SentenceTranslation: escapeHtml(card.sentenceTranslation),
@@ -134,6 +138,13 @@ export function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
+function rubyHtml(word, reading) {
+  return furigana
+    .segments(word, reading)
+    .map(({ text, rt }) => (rt ? `<ruby>${escapeHtml(text)}<rt>${escapeHtml(rt)}</rt></ruby>` : escapeHtml(text)))
+    .join("");
+}
+
 function highlight(sentence, word) {
   const escaped = escapeHtml(sentence);
   const target = escapeHtml(word);
@@ -165,6 +176,8 @@ const NOTE_TYPE_DEFINITION = {
 .nightMode.card, .night_mode .card { color: #e8e8ea; background: #1c1c1e; }
 .word { font-size: 2em; font-weight: 600; }
 .ipa { color: #6e6e73; font-size: 0.9em; }
+.ipa ruby { font-size: 1.6em; color: #1d1d1f; }
+.nightMode .ipa ruby { color: #e8e8ea; }
 .sentence { margin-top: 16px; }
 .sentence b { color: #2f6fed; }
 .nightMode .sentence b { color: #7aa7ff; }

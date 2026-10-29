@@ -7,6 +7,7 @@
   LC.MSG = Object.freeze({
     GET_CARD_CSS: "getCardCss",
     LOOKUP: "lookup",
+    LOOKUP_DETAILS: "lookupDetails",
     ANKI_STATUS: "ankiStatus",
     ANKI_DECKS: "ankiDecks",
     ANKI_MODELS: "ankiModels",

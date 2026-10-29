@@ -12,11 +12,14 @@ A Firefox extension for learning languages with real content. Select a word on a
 - One-click **Add to Anki** via AnkiConnect, with duplicate detection ("Already in deck → Open in Anki")
 - Built-in "Language Companion" note type (created automatically) or your own note type with field mapping
 - Choose definitions and the example before saving, or edit any field
-- 29 languages, auto-detection of the source language
+- Translates Albanian, French, Japanese, Korean, Russian and Turkish into English. The language is detected automatically (writing system, Firefox's language detection, then telltale letters such as ë or ğ) and can be corrected on the card. English words get definitions only
+- Phrases and sentences are only translated; dictionaries and example sentences are looked up for words and short expressions
 - Pluggable translators: MyMemory (free, no key), DeepL (API key), LibreTranslate (self-hosted)
-- Dictionaries: Free Dictionary (English IPA and audio), Wiktionary (most languages), Tatoeba (example sentences)
+- Dictionaries: Free Dictionary (English IPA and audio), Jisho (Japanese readings and definitions), Wiktionary (most languages), Tatoeba (example sentences)
+- **Furigana** for Japanese words: readings over each kanji on the card, and in the Pronunciation field of the Anki note (shown on the back)
 - **YouTube:** click any word in the subtitles. The video pauses and the card opens. The subtitle line is saved as the sentence, with a link to the video at that moment
-- Light and dark theme, keyboard shortcuts, context menu, per-site disable
+- A deck per language (e.g. Albanian words go to your Albanian deck), set in the settings
+- Light and dark theme, keyboard shortcuts, context menu, per-site disable (in settings)
 
 ## Install (development)
 
@@ -39,17 +42,31 @@ npm run build    # zip in web-ext-artifacts/
 
 ## Connecting Anki
 
-1. Install AnkiConnect in Anki (Tools → Add-ons → Get Add-ons → code `2055492159`) and restart Anki.
-2. Open the extension settings and click **Test connection**. Anki shows a dialog asking whether to allow the extension. Click **Yes**.
-3. Pick your default deck.
+1. In Anki, install AnkiConnect: Tools → Add-ons → Get Add-ons → code `2055492159`. Restart Anki.
+2. Open Tools → Add-ons → AnkiConnect → **Config** and add the extension's origin to `webCorsOriginList`:
 
-If no dialog appears and the connection is refused, add the extension's origin to AnkiConnect's config manually (Tools → Add-ons → AnkiConnect → Config):
+   ```json
+   {
+       "apiKey": null,
+       "apiLogPath": null,
+       "ignoreOriginList": [],
+       "webBindAddress": "127.0.0.1",
+       "webBindPort": 8765,
+       "webCorsOriginList": [
+           "http://localhost",
+           "moz-extension://62507959-2455-4db3-851d-e4b7ccd8ed3b"
+       ]
+   }
+   ```
 
-```json
-"webCorsOriginList": ["http://localhost", "moz-extension://<your-extension-uuid>"]
-```
+   This UUID is the one `npm start` uses (it is pinned in `web-ext-config.mjs`). If you installed the extension in your normal Firefox profile instead, use the UUID shown in `about:debugging#/runtime/this-firefox` next to the extension ("Internal UUID"). It stays the same for that profile.
+3. Click **Save** and restart Anki.
+4. In the extension settings, click **Test connection**. It should say "Connected".
+5. Under **Decks**, pick a deck for each language. Changing the deck on a card also changes it for that card's language.
 
-You can find the UUID in `about:debugging` next to the extension ("Internal UUID").
+Keep `webBindAddress` at `127.0.0.1`, so only your own computer can reach Anki. An API key is not needed then. If you set one in AnkiConnect, enter the same key in the extension settings.
+
+If the test still fails, make sure Anki is running and the origin is not listed under `ignoreOriginList`. AnkiConnect adds an origin there when you click **No** in its permission dialog.
 
 ## Usage
 
@@ -110,4 +127,4 @@ Selected text and the surrounding sentence go to the translation and dictionary 
 
 ## Roadmap
 
-- **v0.4:** Netflix, audio clips and screenshots, more card templates, furigana for Japanese, AI translation provider
+- **v0.4:** Netflix, audio clips and screenshots, more card templates, AI translation provider

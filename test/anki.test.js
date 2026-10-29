@@ -117,3 +117,9 @@ test("ensureNoteType creates the note type only when missing", async () => {
   await createAnkiClient({ url: "x", fetch: existing.fetch }).ensureNoteType();
   assert.equal(existing.calls.length, 1);
 });
+
+test("buildNote puts Japanese words with furigana in Pronunciation", () => {
+  const note = buildNote({ ...card, word: "食べ物", reading: "たべもの", ipa: "", sourceLang: "ja" }, settings);
+  assert.equal(note.fields.Word, "食べ物");
+  assert.equal(note.fields.Pronunciation, "<ruby>食<rt>た</rt></ruby>べ<ruby>物<rt>もの</rt></ruby>");
+});

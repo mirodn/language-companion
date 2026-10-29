@@ -64,15 +64,31 @@ function onSettingChanged(path) {
   if (path === "ankiUrl" || path === "libreUrl") updateGrantButtons();
 }
 
-// --- Languages --------------------------------------------------------------------
+// --- Decks per language ----------------------------------------------------------
 
-function fillLanguages() {
-  const options = (includeAuto) => [
-    ...(includeAuto ? [new Option("Auto-detect", "auto")] : []),
-    ...languages.list.map((lang) => new Option(lang.name, lang.code)),
-  ];
-  $("#sourceLang").replaceChildren(...options(true));
-  $("#targetLang").replaceChildren(...options(false));
+const deckLanguages = () => languages.list.filter((lang) => lang.code !== languages.target);
+
+// A language without its own deck shows (and uses) the fallback deck from deckFor.
+function createDeckRows() {
+  const rows = deckLanguages().map((lang) => {
+    const row = document.createElement("div");
+    row.className = "row";
+    const label = document.createElement("label");
+    label.htmlFor = `deck-${lang.code}`;
+    label.textContent = lang.name;
+    const select = document.createElement("select");
+    select.id = `deck-${lang.code}`;
+    select.addEventListener("change", () => save(`decks.${lang.code}`, select.value));
+    row.append(label, select);
+    return row;
+  });
+  $("#deck-rows").replaceChildren(...rows);
+}
+
+function fillDeckSelects(decks) {
+  for (const lang of deckLanguages()) {
+    fillSelect($(`#deck-${lang.code}`), decks, settingsStore.deckFor(settings, lang.code));
+  }
 }
 
 // --- Translator -------------------------------------------------------------------
@@ -132,7 +148,7 @@ function fillSelect(select, values, current, { placeholder } = {}) {
 
 async function loadAnkiLists() {
   const [decks, models] = await Promise.all([send(MSG.ANKI_DECKS), send(MSG.ANKI_MODELS)]);
-  fillSelect($("#deck"), decks, settings.deck);
+  fillDeckSelects(decks);
   fillSelect($("#mappedModel"), models, settings.mappedModel, { placeholder: "Choose a note type…" });
   await updateMapping();
 }
@@ -169,8 +185,8 @@ async function updateMapping() {
 
 async function init() {
   settings = await settingsStore.getSettings();
-  fillLanguages();
-  fillSelect($("#deck"), [], settings.deck);
+  createDeckRows();
+  fillDeckSelects([]);
   bindInputs();
   bindGrantButtons();
   updateTranslatorRows();

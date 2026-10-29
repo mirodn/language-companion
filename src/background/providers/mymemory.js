@@ -22,5 +22,11 @@ export function parse(data) {
     throw new ProviderError("mymemory", data?.responseDetails || "translation failed");
   }
   if (data.quotaFinished) throw new ProviderError("mymemory", "daily quota reached");
+  // A match below 1 is a fuzzy translation-memory hit for a different text, e.g. "A. Dwelling
+  // space" for "dwelling space". The machine translation of the exact text is better then.
+  if (Number(data.responseData?.match) < 1) {
+    const machine = data.matches?.find((m) => m["created-by"] === "MT!");
+    if (machine?.translation) return machine.translation;
+  }
   return data.responseData?.translatedText ?? "";
 }

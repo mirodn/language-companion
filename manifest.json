@@ -31,6 +31,7 @@
     "https://api.deepl.com/*",
     "https://en.wiktionary.org/*",
     "https://api.dictionaryapi.dev/*",
+    "https://jisho.org/*",
     "https://api.tatoeba.org/*"
   ],
   "optional_host_permissions": [
@@ -51,6 +52,7 @@
         "src/shared/messages.js",
         "src/shared/languages.js",
         "src/shared/settings.js",
+        "src/shared/furigana.js",
         "src/content/selection.js",
         "src/content/popup-ui.js",
         "src/content/content.js"
