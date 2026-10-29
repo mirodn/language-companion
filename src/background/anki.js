@@ -19,7 +19,13 @@ export const NOTE_FIELDS = [
   "Language",
 ];
 
-export class AnkiError extends Error {}
+export class AnkiError extends Error {
+  // unreachable: Anki is not running (or AnkiConnect is missing), so the request can be retried later.
+  constructor(message, { unreachable = false } = {}) {
+    super(message);
+    this.unreachable = unreachable;
+  }
+}
 
 export function createAnkiClient({ url, key, fetch: fetchImpl = globalThis.fetch }) {
   async function invoke(action, params = {}) {
@@ -31,7 +37,7 @@ export function createAnkiClient({ url, key, fetch: fetchImpl = globalThis.fetch
         body: JSON.stringify({ action, version: 6, params, ...(key ? { key } : {}) }),
       });
     } catch {
-      throw new AnkiError("Cannot reach Anki. Is Anki open with AnkiConnect installed?");
+      throw new AnkiError("Cannot reach Anki. Is Anki open with AnkiConnect installed?", { unreachable: true });
     }
     if (response.status === 403) {
       throw new AnkiError("AnkiConnect refused the request. Allow this extension in AnkiConnect (see README).");

@@ -10,6 +10,8 @@ A Firefox extension for learning languages with real content. Select a word on a
 
 - Lookup card next to the selected word: translation, IPA, audio (or local text-to-speech), definitions, example sentences, and the surrounding sentence with its translation
 - One-click **Add to Anki** via AnkiConnect, with duplicate detection ("Already in deck → Open in Anki")
+- **Works while Anki is closed:** the card offers "Save for later", and saved notes are added automatically once Anki is open (or with "Add now" on the stats page)
+- **Stats:** words per week, day streak, languages and sites you learn from (toolbar popup → Stats)
 - Built-in "Language Companion" note type (created automatically) or your own note type with field mapping
 - Choose definitions and the example before saving, or edit any field
 - Translates Albanian, French, Japanese, Korean, Russian and Turkish into English. The language is detected automatically (writing system, Firefox's language detection, then telltale letters such as ë or ğ) and can be corrected on the card. English words get definitions only
@@ -98,6 +100,7 @@ src/
     providers/   one file per translator / dictionary / example source
   content/       selection handling and the in-page card (shadow DOM)
   action/        toolbar popup
+  stats/         stats page and the numbers behind it
   options/       settings page
 test/            node:test unit tests with saved API responses
 ```
@@ -123,7 +126,7 @@ Then register it in `providers/index.js` and add its host to `host_permissions` 
 
 ## Privacy
 
-Selected text and the surrounding sentence go to the translation and dictionary services you enable. Nothing else leaves your computer. Settings live in Firefox sync storage, and the lookup cache stays local.
+Selected text and the surrounding sentence go to the translation and dictionary services you enable. Nothing else leaves your computer. Settings live in Firefox sync storage. The lookup cache, the list of saved words behind the stats, and notes waiting for Anki stay local.
 
 ## Roadmap
 

@@ -206,6 +206,7 @@
     }
 
     // state: idle | checking | ready | duplicate | adding | added | error
+    //        offline (Anki closed, adding saves the note for later) | queued (saved for later)
     setAnkiState(state, message = "") {
       if (!this.state) return;
       this.state.anki = { state, message };
@@ -238,7 +239,7 @@
 
     canAdd() {
       const { status, detailsLoading, anki } = this.state ?? {};
-      return status === "ready" && !detailsLoading && !["adding", "added", "duplicate", "checking"].includes(anki.state);
+      return status === "ready" && !detailsLoading && !["adding", "added", "queued", "duplicate", "checking"].includes(anki.state);
     }
 
     add() {
@@ -434,6 +435,8 @@
           h("a", { href: "#", onClick: (event) => (event.preventDefault(), this.handlers.onOpenInAnki(this.getCard())) }, "Open in Anki"),
         ),
         added: h("span", { class: "success" }, "✓ Added to Anki"),
+        offline: h("span", { class: "muted", title: "The note is added as soon as Anki is open." }, "Anki is closed"),
+        queued: h("span", { class: "success", title: "The note is added as soon as Anki is open." }, "✓ Saved for later"),
         error: h("span", { class: "error", title: anki.message }, anki.message),
       }[anki.state];
 
@@ -458,7 +461,7 @@
         h(
           "button",
           { class: "button primary", title: "Add to Anki (Enter)", disabled: !this.canAdd(), onClick: () => this.add() },
-          anki.state === "adding" ? "Adding…" : "Add to Anki",
+          anki.state === "adding" ? "Adding…" : ["offline", "queued"].includes(anki.state) ? "Save for later" : "Add to Anki",
         ),
       );
     }

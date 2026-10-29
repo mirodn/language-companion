@@ -15,6 +15,8 @@
     ANKI_CHECK_DUPLICATE: "ankiCheckDuplicate",
     ANKI_ADD_NOTE: "ankiAddNote",
     ANKI_BROWSE: "ankiBrowse",
+    QUEUE_FLUSH: "queueFlush",
+    LOG_REMOVE: "logRemove",
     // Background -> content
     OPEN_CARD: "openCard",
   });

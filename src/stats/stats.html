@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Language Companion Stats</title>
+    <link rel="stylesheet" href="../shared/page.css" />
+    <link rel="stylesheet" href="stats.css" />
+    <script src="../shared/messages.js"></script>
+    <script src="../shared/languages.js"></script>
+    <script type="module" src="stats.js"></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Stats</h1>
+        <p class="muted">Words you saved with Language Companion. Words saved before stats were added aren't counted.</p>
+      </header>
+
+      <section id="queue" hidden>
+        <div class="section-head">
+          <h2>Waiting for Anki</h2>
+          <div class="inline">
+            <span id="queue-status" class="muted"></span>
+            <button type="button" id="flush" class="primary">Add now</button>
+          </div>
+        </div>
+        <p class="muted small">Saved while Anki was closed. They are added automatically once Anki is open.</p>
+        <table>
+          <thead>
+            <tr><th>Word</th><th>Deck</th><th>Saved</th><th></th></tr>
+          </thead>
+          <tbody id="queue-rows"></tbody>
+        </table>
+      </section>
+
+      <p id="empty" class="muted" hidden>No words yet. Select a word on any page and add it to Anki.</p>
+
+      <div id="stats" hidden>
+        <div class="tiles">
+          <div class="tile"><span class="value" id="this-week"></span><span class="label">this week</span></div>
+          <div class="tile"><span class="value" id="streak"></span><span class="label">day streak</span></div>
+          <div class="tile"><span class="value" id="total"></span><span class="label">in total</span></div>
+        </div>
+
+        <section>
+          <h2>Per week</h2>
+          <div class="chart" id="weeks" role="img"></div>
+        </section>
+
+        <div class="columns">
+          <section>
+            <h2>Languages</h2>
+            <ul class="bars" id="languages"></ul>
+          </section>
+          <section>
+            <h2>Sites</h2>
+            <ul class="bars" id="sources"></ul>
+          </section>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

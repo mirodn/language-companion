@@ -12,7 +12,12 @@
 
   async function send(type, payload = {}) {
     const response = await browser.runtime.sendMessage({ type, ...payload });
-    if (!response?.ok) throw new Error(response?.error ?? "No response from the extension.");
+    if (!response?.ok) {
+      const error = new Error(response?.error ?? "No response from the extension.");
+      // Anki is closed; notes can still be saved and are added later.
+      error.unreachable = Boolean(response?.unreachable);
+      throw error;
+    }
     return response.data;
   }
 
@@ -82,14 +87,19 @@
     card.setResult(result);
     const detailsShown = details.then((data) => id === lookupId && card.setDetails(data));
 
+    const deck = LC.settings.deckFor(settings, result.sourceLang);
+    let offline = false;
     try {
-      card.setDecks(await send(MSG.ANKI_DECKS), LC.settings.deckFor(settings, result.sourceLang));
+      card.setDecks(await send(MSG.ANKI_DECKS), deck);
     } catch (error) {
-      if (id === lookupId) card.setAnkiState("error", error.message);
-      return;
+      if (id !== lookupId) return;
+      if (!error.unreachable) return card.setAnkiState("error", error.message);
+      card.setDecks([], deck);
+      card.setAnkiState("offline");
+      offline = true;
     }
     if (id !== lookupId) return;
-    await checkDuplicate(card.getCard());
+    if (!offline) await checkDuplicate(card.getCard());
     await detailsShown;
     if (autoAdd && id === lookupId) card.add();
   }
@@ -104,7 +114,7 @@
       else if (!canAdd) ui.setAnkiState("error", error);
       else ui.setAnkiState("ready");
     } catch (error) {
-      if (id === lookupId) ui.setAnkiState("error", error.message);
+      if (id === lookupId) ui.setAnkiState(error.unreachable ? "offline" : "error", error.message);
     }
   }
 
@@ -112,8 +122,8 @@
     const id = lookupId;
     ui.setAnkiState("adding");
     try {
-      const { duplicate } = await send(MSG.ANKI_ADD_NOTE, { card: cardData });
-      if (id === lookupId) ui.setAnkiState(duplicate ? "duplicate" : "added");
+      const { duplicate, queued } = await send(MSG.ANKI_ADD_NOTE, { card: cardData });
+      if (id === lookupId) ui.setAnkiState(queued ? "queued" : duplicate ? "duplicate" : "added");
     } catch (error) {
       if (id === lookupId) ui.setAnkiState("error", error.message);
     }

@@ -15,6 +15,11 @@ header {
   font-size: 13px;
 }
 
+#summary {
+  margin: -6px 0 12px;
+  font-size: 12px;
+}
+
 .toggle {
   display: flex;
   gap: 8px;

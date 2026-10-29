@@ -3,6 +3,7 @@ import "../shared/settings.js";
 import { createAnkiClient, buildNote, duplicateQuery, resolveNoteType, NOTE_TYPE } from "./anki.js";
 import { lookupDetails, lookupTranslation } from "./lookup.js";
 import { getCached, setCached } from "./cache.js";
+import { flushQueue, loadLog, logAdded, queueNote, removeEntry } from "./word-log.js";
 
 const { MSG, settings: settingsStore } = globalThis.LC;
 
@@ -48,6 +49,38 @@ async function ensureNoteType(client, settings) {
   noteTypeChecked = true;
 }
 
+// --- Notes saved while Anki was closed ------------------------------------------
+
+const FLUSH_ALARM = "flush-queue";
+const FLUSH_PERIOD_MINUTES = 2;
+
+function scheduleFlush() {
+  browser.alarms.create(FLUSH_ALARM, { periodInMinutes: FLUSH_PERIOD_MINUTES });
+}
+
+let flushing = null;
+
+// Adds queued notes to Anki. The alarm keeps retrying until the queue is empty.
+function runFlush() {
+  flushing ??= (async () => {
+    const { client, settings } = await anki();
+    const result = await flushQueue(async (note) => {
+      await ensureNoteType(client, settings);
+      return client.addNote(note);
+    });
+    if (!result.remaining) await browser.alarms.clear(FLUSH_ALARM);
+    return result;
+  })().finally(() => (flushing = null));
+  return flushing;
+}
+
+browser.alarms.onAlarm.addListener(({ name }) => {
+  if (name === FLUSH_ALARM) runFlush().catch(() => {});
+});
+
+// Alarms don't survive a browser restart, so pick up a queue left from the last session.
+loadLog().then((entries) => entries.some((entry) => entry.status === "queued") && scheduleFlush());
+
 // --- Messages -----------------------------------------------------------------
 
 const lookupContext = {
@@ -74,6 +107,7 @@ const handlers = {
     // requestPermission doubles as a status check; Anki only shows a dialog the first time.
     const result = await client.requestPermission();
     if (result.permission !== "granted") throw new Error("Permission denied in Anki.");
+    runFlush().catch(() => {});
     return { version: result.version };
   },
 
@@ -100,12 +134,19 @@ const handlers = {
 
   async [MSG.ANKI_ADD_NOTE]({ card }) {
     const { client, settings } = await anki();
-    await ensureNoteType(client, settings);
+    const note = buildNote(card, settings);
     try {
-      return { noteId: await client.addNote(buildNote(card, settings)) };
+      await ensureNoteType(client, settings);
+      const noteId = await client.addNote(note);
+      await logAdded(card, note);
+      return { noteId };
     } catch (error) {
       if (/duplicate/i.test(error.message)) return { duplicate: true };
-      throw error;
+      if (!error.unreachable) throw error;
+      // Anki is closed: keep the note and add it once Anki is open again.
+      await queueNote(card, note);
+      scheduleFlush();
+      return { queued: true };
     }
   },
 
@@ -113,6 +154,10 @@ const handlers = {
     const { client, settings } = await anki();
     return client.browse(duplicateQuery(card, settings));
   },
+
+  [MSG.QUEUE_FLUSH]: () => runFlush(),
+
+  [MSG.LOG_REMOVE]: ({ id }) => removeEntry(id),
 };
 
 // Every response is { ok: true, data } or { ok: false, error } so callers get readable errors.
@@ -124,7 +169,7 @@ browser.runtime.onMessage.addListener((message) => {
     (error) => {
       // A failed request may mean the note type was deleted in Anki; check again next time.
       noteTypeChecked = false;
-      return { ok: false, error: error.message ?? String(error) };
+      return { ok: false, error: error.message ?? String(error), unreachable: Boolean(error.unreachable) };
     },
   );
 });
