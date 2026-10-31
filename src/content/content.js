@@ -25,10 +25,15 @@
     return settings && !LC.settings.isSiteDisabled(settings, location.hostname);
   }
 
+  function cardOptions() {
+    return { showSentenceTranslation: settings.showSentenceTranslation };
+  }
+
   async function getUI() {
     ui ??= new LC.CompanionUI({
       css: await send(MSG.GET_CARD_CSS),
       theme: settings.theme,
+      options: cardOptions(),
       handlers: {
         onTrigger: () => openFromSelection(),
         onAdd: (card) => addToAnki(card),
@@ -209,6 +214,7 @@
     if (area !== "sync") return;
     settings = await LC.settings.getSettings();
     ui?.setTheme(settings.theme);
+    ui?.setOptions(cardOptions());
     if (!enabledHere()) {
       ui?.close();
       ui?.hideTrigger();

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Language Companion",
-  "version": "0.3.0",
-  "description": "Look up words while you browse and save them to Anki with one click.",
+  "version": "0.4.0",
+  "description": "Learn Japanese, Korean and Chinese while you browse: look up words on any page, in a reader view or in YouTube subtitles, and save them to Anki.",
   "browser_specific_settings": {
     "gecko": {
       "id": "language-companion@mirodn",

@@ -199,6 +199,47 @@
   color: var(--accent);
 }
 
+.definitions {
+  margin-top: 6px;
+}
+
+.definition {
+  margin: 2px 0;
+}
+
+.reveal,
+.more {
+  all: unset;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.reveal {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 1px 8px;
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+}
+
+.more {
+  display: block;
+  margin-top: 10px;
+}
+
+.reveal:hover,
+.more:hover {
+  color: var(--accent);
+}
+
+.reveal:focus-visible,
+.more:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: 4px;
+}
+
 .section {
   margin-top: 10px;
   padding-top: 10px;

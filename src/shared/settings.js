@@ -18,6 +18,8 @@
 
     translator: "mymemory",
     translateSentence: true,
+    // The sentence translation on the card starts hidden ("Show translation") unless this is on.
+    showSentenceTranslation: false,
     myMemoryEmail: "",
     deeplKey: "",
     libreUrl: "",

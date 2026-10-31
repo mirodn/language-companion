@@ -4,11 +4,12 @@ A Firefox extension for learning **Japanese, Korean and Chinese** with real cont
 
 > Read → select an unknown word → understand it → save it to Anki → review later.
 
-**Status:** v0.3: web pages, reader, YouTube subtitles, automatic translation, dictionaries, Anki integration (see [Roadmap](#roadmap)).
+**Status:** v0.4: web pages, reader, YouTube subtitles, automatic translation, dictionaries, Anki integration (see [Roadmap](#roadmap)).
 
 ## Features
 
-- Lookup card next to the selected word: translation, IPA, audio (or local text-to-speech), definitions, example sentences, and the surrounding sentence with its translation
+- Lookup card next to the selected word. It starts compact: translation, reading, audio (or local text-to-speech), the definition that goes on the card, and the surrounding sentence. **More** (or <kbd>M</kbd>) shows all definitions to choose from, the kanji and example sentences; the card remembers which view you used last
+- The **sentence translation stays hidden** until you click "Show translation" (or press <kbd>T</kbd>), so you can try the sentence yourself first. Settings → "Show the sentence translation right away" turns this off
 - One-click **Add to Anki** via AnkiConnect, with duplicate detection ("Already in deck → Open in Anki")
 - **Works while Anki is closed:** the card offers "Save for later", and saved notes are added automatically once Anki is open (or with "Add now" on the stats page)
 - **Stats:** words per week, day streak, languages and sites you learn from (toolbar popup → Stats)
@@ -20,7 +21,7 @@ A Firefox extension for learning **Japanese, Korean and Chinese** with real cont
 - Phrases and sentences are only translated; dictionaries and example sentences are looked up for words and short expressions
 - Pluggable translators: MyMemory (free, no key), DeepL (API key), LibreTranslate (self-hosted)
 - Dictionaries: Jisho (Japanese readings and definitions), KANJIDIC2 (kanji meanings), CC-CEDICT (Chinese), Wiktionary (Korean), Free Dictionary (English IPA and audio), Tatoeba (example sentences)
-- **Base form:** conjugated Japanese words show their dictionary form ("食べた → 食べる", from Jisho), and Korean nouns without their particle ("학교에 → 학교 · with the particle 에"). Click it (or press <kbd>B</kbd>) to look up and save the base form instead; the sentence keeps the word as written. and Korean verbs without their ending ("갔어요 → 가다", "공부했습니다 → 공부하다")
+- **Base form:** conjugated Japanese words show their dictionary form ("食べた → 食べる", from Jisho), and Korean nouns without their particle ("학교에 → 학교 · with the particle 에"). and Korean verbs without their ending ("갔어요 → 가다", "공부했습니다 → 공부하다"). Click it (or press <kbd>B</kbd>) to look up and save the base form instead; the sentence keeps the word as written
 - **Word frequency** badge: Japanese shows the JLPT level or "Common" (from Jisho); Korean and Chinese show "Top 1k" … "Top 20k" from bundled subtitle word lists, using the base form's rank. Saved notes get a tag such as `lc::freq::jlpt-n5` or `lc::freq::top-2k`
 - **Quick peek:** in the reader and on YouTube subtitles, hold <kbd>Shift</kbd> while pointing at a word to see its reading and main meaning in a small tooltip, without opening the card
 - **Kanji breakdown** for Japanese words (学校 → 学 study · 校 school) on the card and on the back of the Anki card, from KANJIDIC2 (built in, works offline)
@@ -52,6 +53,8 @@ npm test         # unit tests (no browser needed)
 npm run lint     # web-ext lint
 npm run build    # zip in web-ext-artifacts/
 ```
+
+Publishing to addons.mozilla.org: see [store/LISTING.md](store/LISTING.md) for the steps, the listing text and a smoke test.
 
 ## Connecting Anki
 
@@ -95,6 +98,8 @@ If the test still fails, make sure Anki is running and the origin is not listed 
 | Play pronunciation | <kbd>P</kbd> |
 | Edit fields | <kbd>E</kbd> |
 | Use the base form | <kbd>B</kbd> |
+| Show the sentence translation | <kbd>T</kbd> |
+| More / less (all definitions, kanji, examples) | <kbd>M</kbd> |
 | Close | <kbd>Esc</kbd> |
 
 ### YouTube
@@ -119,8 +124,9 @@ src/
   reader/        reader page and the script that finds the article
   vendor/        Mozilla Readability (Apache-2.0)
   welcome/       first-run setup page
-data/            bundled data: frequency lists, CC-CEDICT, KANJIDIC2 (built by the scripts in scripts/)
   options/       settings page
+data/            bundled data: frequency lists, CC-CEDICT, KANJIDIC2 (built by the scripts in scripts/)
+store/           AMO listing text and screenshots (not packaged)
 test/            node:test unit tests with saved API responses
 ```
 
@@ -145,7 +151,7 @@ Then register it in `providers/index.js` and add its host to `host_permissions` 
 
 ## Privacy
 
-Selected text and the surrounding sentence go to the translation and dictionary services you enable. Nothing else leaves your computer. Settings live in Firefox sync storage. The lookup cache, the list of saved words behind the stats, and notes waiting for Anki stay local.
+Selected text and the surrounding sentence go to the translation and dictionary services you enable. Nothing else leaves your computer (details in [PRIVACY.md](PRIVACY.md)). Settings live in Firefox sync storage. The lookup cache, the list of saved words behind the stats, and notes waiting for Anki stay local.
 
 ## Credits
 
@@ -156,6 +162,10 @@ Chinese dictionary: [CC-CEDICT](https://cc-cedict.org/) by MDBG, CC BY-SA 4.0 (s
 Kanji meanings: [KANJIDIC2](https://www.edrdg.org/wiki/index.php/KANJIDIC_Project) by EDRDG, CC BY-SA 4.0 (see [data/kanjidic/ATTRIBUTION.md](data/kanjidic/ATTRIBUTION.md)).
 
 Word frequency lists: [FrequencyWords](https://github.com/hermitdave/FrequencyWords) by Hermit Dave, CC BY-SA 4.0 (see [data/frequency/ATTRIBUTION.md](data/frequency/ATTRIBUTION.md)).
+
+## License
+
+MIT (see [LICENSE](LICENSE)). The bundled dictionaries and Readability keep their own licenses, listed under Credits.
 
 ## Roadmap
 

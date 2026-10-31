@@ -34,11 +34,15 @@
   }
 
   class CompanionUI {
+    // options: { showSentenceTranslation }
     // handlers: { onTrigger, onAdd, onOpenInAnki, onSourceLangChange, onUseBaseForm, onDeckChange, onCardChanged, onClose }
-    constructor({ css, theme, handlers }) {
+    constructor({ css, theme, options = {}, handlers }) {
       this.handlers = handlers;
+      this.options = options;
       this.state = null;
       this.anchor = null;
+      // Whether the card shows everything (all definitions, kanji, examples). Kept between lookups.
+      this.expanded = false;
 
       this.host = document.createElement("language-companion-root");
       this.host.setAttribute("style", "all: initial; position: absolute; top: 0; left: 0; z-index: 2147483647;");
@@ -109,6 +113,11 @@
       this.host.dataset.theme = theme;
     }
 
+    setOptions(options) {
+      this.options = options;
+      this.render();
+    }
+
     destroy() {
       this.host.remove();
     }
@@ -143,6 +152,7 @@
         result: null,
         error: "",
         editing: false,
+        sentenceTranslationShown: false,
         selectedDefinitions: new Set(),
         selectedExample: 0,
         decks: [],
@@ -188,8 +198,8 @@
       result.errors = [...result.errors, ...(details.errors ?? [])];
       Object.assign(this.state, {
         detailsLoading: false,
-        // Pre-select the first two definitions; that is usually enough on a card.
-        selectedDefinitions: new Set(result.definitions.slice(0, 2).map((_, i) => i)),
+        // Pre-select the top definition; more can be ticked under "More".
+        selectedDefinitions: new Set(result.definitions.length ? [0] : []),
         selectedExample: result.examples.length ? 0 : -1,
       });
       this.render();
@@ -273,6 +283,19 @@
       new Audio(result.audioUrl).play().catch(speak);
     }
 
+    toggleExpanded() {
+      if (this.state?.status !== "ready" || this.state.editing) return;
+      this.expanded = !this.expanded;
+      this.render();
+    }
+
+    // The sentence translation starts hidden, so the sentence can be tried first.
+    showSentenceTranslation() {
+      if (!this.state?.result?.sentenceTranslation) return;
+      this.state.sentenceTranslationShown = true;
+      this.render();
+    }
+
     toggleEdit() {
       if (this.state?.status !== "ready") return;
       this.state.editing = !this.state.editing;
@@ -310,6 +333,14 @@
         this.useBaseForm();
         return true;
       }
+      if (event.key === "m" || event.key === "M") {
+        this.toggleExpanded();
+        return true;
+      }
+      if ((event.key === "t" || event.key === "T") && this.state.result?.sentenceTranslation) {
+        this.showSentenceTranslation();
+        return true;
+      }
       return false;
     }
 
@@ -327,7 +358,7 @@
               ? this.renderEditor()
               : this.renderResult();
       this.card.replaceChildren(
-        ...[...body, s.status === "ready" && this.renderFooter()].filter((child) => child != null && child !== false),
+        ...[...body, s.status === "ready" && this.renderFooter()].flat().filter((child) => child != null && child !== false),
       );
       this.position();
     }
@@ -336,8 +367,10 @@
       return h("button", { class: "icon-button", title: "Close (Esc)", onClick: () => this.close() }, "×");
     }
 
+    // Compact by default: word, reading, translation, the definitions that will be saved and the
+    // sentence. "More" shows the rest: all definitions to choose from, kanji, examples.
     renderResult() {
-      const { result, selectedDefinitions, selectedExample } = this.state;
+      const { result } = this.state;
       return [
         h(
           "div",
@@ -352,58 +385,107 @@
         ),
         this.renderBaseForm(),
         h("div", { class: "translation" }, result.translation || (result.sourceLang === result.targetLang ? "" : "—")),
-        result.sentence &&
-          h(
-            "div",
-            { class: "section" },
-            h("div", { class: "sentence" }, highlighted(result.sentence, result.surface || result.word)),
-            result.sentenceTranslation && h("div", { class: "muted" }, result.sentenceTranslation),
-          ),
         this.state.detailsLoading && h("div", { class: "loading" }, "Loading definitions…"),
-        result.definitions.length > 0 &&
-          h(
-            "div",
-            { class: "section" },
-            h("div", { class: "label" }, "Definitions"),
-            result.definitions.map((def, i) =>
-              h(
-                "label",
-                { class: "option" },
-                h("input", {
-                  type: "checkbox",
-                  checked: selectedDefinitions.has(i),
-                  onChange: (event) => (event.target.checked ? selectedDefinitions.add(i) : selectedDefinitions.delete(i)),
-                }),
-                h("span", {}, def.pos && h("span", { class: "pos" }, def.pos), def.text),
-              ),
-            ),
-          ),
-        this.renderKanji(),
-        result.examples.length > 0 &&
-          h(
-            "div",
-            { class: "section" },
-            h("div", { class: "label" }, "Example"),
-            result.examples.map((example, i) =>
-              h(
-                "label",
-                { class: "option" },
-                h("input", {
-                  type: "radio",
-                  name: "example",
-                  checked: selectedExample === i,
-                  // Clicking the selected example again deselects it.
-                  onClick: (event) => {
-                    this.state.selectedExample = this.state.selectedExample === i ? -1 : i;
-                    event.target.checked = this.state.selectedExample === i;
-                  },
-                }),
-                h("span", {}, example.text, example.translation && h("span", { class: "muted block" }, example.translation)),
-              ),
-            ),
-          ),
-        this.renderWarnings(),
+        this.expanded ? this.renderDefinitionChoices() : this.renderSelectedDefinitions(),
+        this.renderSentence(),
+        this.expanded && [this.renderKanji(), this.renderExamples(), this.renderWarnings()],
+        this.renderMoreToggle(),
       ];
+    }
+
+    // The definitions that go on the card, as plain text.
+    renderSelectedDefinitions() {
+      const { result, selectedDefinitions } = this.state;
+      const selected = result.definitions.filter((_, i) => selectedDefinitions.has(i));
+      if (!selected.length) return null;
+      return h(
+        "div",
+        { class: "definitions" },
+        selected.map((def) => h("div", { class: "definition" }, def.pos && h("span", { class: "pos" }, def.pos), def.text)),
+      );
+    }
+
+    renderDefinitionChoices() {
+      const { result, selectedDefinitions } = this.state;
+      if (!result.definitions.length) return null;
+      return h(
+        "div",
+        { class: "section" },
+        h("div", { class: "label" }, "Definitions"),
+        result.definitions.map((def, i) =>
+          h(
+            "label",
+            { class: "option" },
+            h("input", {
+              type: "checkbox",
+              checked: selectedDefinitions.has(i),
+              onChange: (event) => (event.target.checked ? selectedDefinitions.add(i) : selectedDefinitions.delete(i)),
+            }),
+            h("span", {}, def.pos && h("span", { class: "pos" }, def.pos), def.text),
+          ),
+        ),
+      );
+    }
+
+    renderSentence() {
+      const { result, sentenceTranslationShown } = this.state;
+      if (!result.sentence) return null;
+      const translation = result.sentenceTranslation;
+      const shown = sentenceTranslationShown || this.options.showSentenceTranslation;
+      return h(
+        "div",
+        { class: "section" },
+        h("div", { class: "sentence" }, highlighted(result.sentence, result.surface || result.word)),
+        translation &&
+          (shown
+            ? h("div", { class: "muted" }, translation)
+            : h("button", { class: "reveal", title: "Show the sentence translation (T)", onClick: () => this.showSentenceTranslation() }, "Show translation")),
+      );
+    }
+
+    renderExamples() {
+      const { result, selectedExample } = this.state;
+      if (!result.examples.length) return null;
+      return h(
+        "div",
+        { class: "section" },
+        h("div", { class: "label" }, "Example"),
+        result.examples.map((example, i) =>
+          h(
+            "label",
+            { class: "option" },
+            h("input", {
+              type: "radio",
+              name: "example",
+              checked: selectedExample === i,
+              // Clicking the selected example again deselects it.
+              onClick: (event) => {
+                this.state.selectedExample = this.state.selectedExample === i ? -1 : i;
+                event.target.checked = this.state.selectedExample === i;
+              },
+            }),
+            h("span", {}, example.text, example.translation && h("span", { class: "muted block" }, example.translation)),
+          ),
+        ),
+      );
+    }
+
+    // "More: 3 definitions · kanji · 2 examples", only when there is something more to show.
+    renderMoreToggle() {
+      const { result, selectedDefinitions, detailsLoading } = this.state;
+      if (detailsLoading) return null;
+      const otherDefinitions = result.definitions.length - selectedDefinitions.size;
+      const parts = [
+        otherDefinitions > 0 && `${otherDefinitions} definition${otherDefinitions === 1 ? "" : "s"}`,
+        result.kanji.length > 0 && "kanji",
+        result.examples.length > 0 && `${result.examples.length} example${result.examples.length === 1 ? "" : "s"}`,
+      ].filter(Boolean);
+      if (!this.expanded && !parts.length) return null;
+      return h(
+        "button",
+        { class: "more", "aria-expanded": String(this.expanded), title: "Show more or less (M)", onClick: () => this.toggleExpanded() },
+        this.expanded ? "Less" : `More: ${parts.join(" · ")}`,
+      );
     }
 
     // Failures worth knowing about, e.g. a wrong DeepL key. Timeouts (Tatoeba is often slow) are
