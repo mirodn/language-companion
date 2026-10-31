@@ -37,7 +37,7 @@ On install, a setup page opens: pick your languages, connect Anki (with the exac
 
 ## Install (development)
 
-Requirements: Firefox 128+, Node.js 18+, [Anki Desktop](https://apps.ankiweb.net/) with [AnkiConnect](https://ankiweb.net/shared/info/2055492159).
+Requirements: Firefox 140+, Node.js 18+, [Anki Desktop](https://apps.ankiweb.net/) with [AnkiConnect](https://ankiweb.net/shared/info/2055492159).
 
 ```sh
 npm install
