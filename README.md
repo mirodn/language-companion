@@ -1,172 +1,253 @@
-# Language Companion
+<h1 align="center">Language Companion</h1>
 
-A Firefox extension for learning **Japanese, Korean and Chinese** with real content. Select a word on any page (or just click it in the reader), see its translation, reading, definitions and example sentences, and save it to Anki with one click.
+<p align="center">
+  Learn Japanese, Korean and Chinese from the web you already read.<br>
+  Look up any word in context and save it to Anki in one click.
+</p>
 
-> Read → select an unknown word → understand it → save it to Anki → review later.
+<p align="center">
+  <a href="https://github.com/mirodn/language-companion/actions/workflows/ci.yml"><img src="https://github.com/mirodn/language-companion/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/Firefox-140%2B-FF7139?logo=firefoxbrowser&logoColor=white" alt="Firefox 140+">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
+</p>
 
-**Status:** v0.4: web pages, reader, YouTube subtitles, automatic translation, dictionaries, Anki integration (see [Roadmap](#roadmap)).
+<p align="center">
+  <img src="store/screenshots/1-japanese-reader.png" width="800" alt="A Japanese article in the reader with the lookup card open on 食べました, showing the dictionary form 食べる, the JLPT N5 badge and the meaning">
+</p>
+
+Language Companion is a Firefox extension for learners who read real content: news, blogs, novels, YouTube. Select a word you don't know, see what it means *in that sentence*, and send it to Anki as a flashcard with the sentence, reading, audio and a link back to where you found it.
+
+**Read → look up → understand → save → review later.** You never leave the page.
+
+## Contents
+
+- [Features](#features)
+- [Language support](#language-support)
+- [Installation](#installation)
+- [Connecting Anki](#connecting-anki)
+- [Usage](#usage)
+- [Privacy](#privacy)
+- [Development](#development)
+- [Contributing](#contributing)
+- [Acknowledgements](#acknowledgements)
+- [License](#license)
 
 ## Features
 
-- Lookup card next to the selected word. It starts compact: translation, reading, audio (or local text-to-speech), the definition that goes on the card, and the surrounding sentence. **More** (or <kbd>M</kbd>) shows all definitions to choose from, the kanji and example sentences; the card remembers which view you used last
-- The **sentence translation stays hidden** until you click "Show translation" (or press <kbd>T</kbd>), so you can try the sentence yourself first. Settings → "Show the sentence translation right away" turns this off
-- One-click **Add to Anki** via AnkiConnect, with duplicate detection ("Already in deck → Open in Anki")
-- **Works while Anki is closed:** the card offers "Save for later", and saved notes are added automatically once Anki is open (or with "Add now" on the stats page)
-- **Stats:** words per week, day streak, languages and sites you learn from (toolbar popup → Stats)
-- Built-in "Language Companion" note type (created automatically) or your own note type with field mapping
-- Choose definitions and the example before saving, or edit any field
-- **Your languages:** Japanese to start with; tick Korean or Chinese (or untick Japanese) in the settings. Lookups are offered only for text in your languages: no lookup button for English or other text, and in the reader and YouTube only those words are clickable. Right-click → Look up on other text says it isn't in your languages
-- The language comes from the writing system (kana → Japanese, Hangul → Korean). Text with only kanji/hanzi counts as Japanese or Chinese depending on which one you learn; if you learn both, Firefox's language detection and the page language decide, and the card shows a Japanese | Chinese switch to correct it
-- **Reader:** toolbar popup → **Open in reader** (or right-click → Open in reader) shows the page's article in a clean, distraction-free view where every word is clickable, which helps most with Japanese and Chinese, where words have no spaces between them. Furigana on the page is kept
-- Phrases and sentences are only translated; dictionaries and example sentences are looked up for words and short expressions
-- Pluggable translators: MyMemory (free, no key), DeepL (API key), LibreTranslate (self-hosted)
-- Dictionaries: Jisho (Japanese readings and definitions), KANJIDIC2 (kanji meanings), CC-CEDICT (Chinese), Wiktionary (Korean), Free Dictionary (English IPA and audio), Tatoeba (example sentences)
-- **Base form:** conjugated Japanese words show their dictionary form ("食べた → 食べる", from Jisho), and Korean nouns without their particle ("학교에 → 학교 · with the particle 에"). and Korean verbs without their ending ("갔어요 → 가다", "공부했습니다 → 공부하다"). Click it (or press <kbd>B</kbd>) to look up and save the base form instead; the sentence keeps the word as written
-- **Word frequency** badge: Japanese shows the JLPT level or "Common" (from Jisho); Korean and Chinese show "Top 1k" … "Top 20k" from bundled subtitle word lists, using the base form's rank. Saved notes get a tag such as `lc::freq::jlpt-n5` or `lc::freq::top-2k`
-- **Quick peek:** in the reader and on YouTube subtitles, hold <kbd>Shift</kbd> while pointing at a word to see its reading and main meaning in a small tooltip, without opening the card
-- **Kanji breakdown** for Japanese words (学校 → 学 study · 校 school) on the card and on the back of the Anki card, from KANJIDIC2 (built in, works offline)
-- **Chinese dictionary:** CC-CEDICT is built in (works offline) for definitions and **pinyin** in simplified and traditional spelling; characters with several readings (行 háng / xíng) list each one
-- **Furigana** for Japanese words: readings over each kanji on the card, and in the Pronunciation field of the Anki note (shown on the back)
-- **YouTube:** click any word in the subtitles. The video pauses and the card opens. Only subtitles in your languages are clickable. The subtitle line is saved as the sentence, with a link to the video at that moment
-- A deck per language (e.g. Korean words go to your Korean deck), set in the settings
-- Light and dark theme, keyboard shortcuts, context menu, per-site disable (in settings)
+**Understand a word**
 
-## Getting started
+- A small card next to the word: translation, reading and the main definition at a glance. **More** shows all definitions, the kanji and example sentences
+- Furigana for Japanese, pinyin for Chinese, audio or text-to-speech for everything
+- Conjugated words lead to their dictionary form: 食べました → 食べる, 갔어요 → 가다, 학교에 → 학교
+- JLPT level or word frequency ("Top 2k") shows what is worth learning first
+- The sentence translation stays hidden until you ask for it, so you try the sentence yourself first
 
-On install, a setup page opens: pick your languages, connect Anki (with the exact AnkiConnect setting to copy and a connection check), and choose or create a deck per language. It can be opened again from the settings ("Run setup again"). The manual steps are below.
+**Read and watch**
 
-## Install (development)
+- **Reader:** opens any article in a calm view where every word is clickable. This helps most with Japanese and Chinese, which have no spaces between words
+- **Quick peek:** hold <kbd>Shift</kbd> over a word in the reader or in YouTube subtitles to see its reading and meaning
+- **YouTube:** click a word in the subtitles. The video pauses, and the subtitle line becomes the card's sentence, with a link back to that moment in the video
 
-Requirements: Firefox 140+, Node.js 18+, [Anki Desktop](https://apps.ankiweb.net/) with [AnkiConnect](https://ankiweb.net/shared/info/2055492159).
+**Remember**
+
+- One click (or <kbd>Enter</kbd>) adds the note to Anki, with duplicate detection and a deck per language
+- **Works while Anki is closed:** notes wait and are added as soon as Anki opens
+- Uses a ready-made note type, or your own one with field mapping
+- A stats page shows words per week, your streak and where you learn from
+
+## Language support
+
+The language is recognised from the writing system, so there is nothing to switch. Kana means Japanese and Hangul means Korean. Text with only kanji or hanzi goes to whichever of Japanese and Chinese you learn. If you learn both, the card shows a Japanese | Chinese switch.
+
+|  | Japanese | Korean | Chinese |
+| --- | --- | --- | --- |
+| Reading | Furigana | Hangul is phonetic | Pinyin with tone marks |
+| Dictionary form | 食べました → 食べる | 갔어요 → 가다, 학교에 → 학교 | not needed |
+| Definitions | Jisho | Wiktionary | CC-CEDICT, built in |
+| Frequency badge | JLPT N5–N1 | Top 1k–20k | Top 1k–20k |
+| Extras | Kanji breakdown (KANJIDIC2, built in) | | Simplified and traditional, every reading of 行 |
+| Example sentences | Tatoeba | Tatoeba | Tatoeba |
+
+Translations come from MyMemory (free, no account), DeepL (your API key) or LibreTranslate (your own server). Japanese is the default; add Korean or Chinese in the settings.
+
+<p align="center">
+  <img src="store/screenshots/2-chinese-more.png" width="49%" alt="Chinese card for 习惯 with pinyin xí guàn, all definitions with checkboxes and example sentences">
+  <img src="store/screenshots/3-korean-page.png" width="49%" alt="Korean card for 갔어요 on a blog page, linking to the dictionary form 가다">
+</p>
+
+## Installation
+
+### From Firefox Add-ons
+
+The extension is currently in review at addons.mozilla.org. The link will be here once it is approved.
+
+### From source
+
+Requirements: Firefox 140 or newer and Node.js 18 or newer.
 
 ```sh
+git clone https://github.com/mirodn/language-companion.git
+cd language-companion
 npm install
-npm start        # launches Firefox with the extension loaded
+npm start
 ```
 
-Or load it by hand: open `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on…** → pick `manifest.json`.
-
-Other scripts:
-
-```sh
-npm test         # unit tests (no browser needed)
-npm run lint     # web-ext lint
-npm run build    # zip in web-ext-artifacts/
-```
-
-Publishing to addons.mozilla.org: see [store/LISTING.md](store/LISTING.md) for the steps, the listing text and a smoke test.
+`npm start` opens a separate Firefox profile with the extension loaded. To use it in your own profile, open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on…** and pick `manifest.json`. Firefox removes temporary add-ons when it restarts.
 
 ## Connecting Anki
 
-1. In Anki, install AnkiConnect: Tools → Add-ons → Get Add-ons → code `2055492159`. Restart Anki.
-2. Open Tools → Add-ons → AnkiConnect → **Config** and add the extension's origin to `webCorsOriginList`:
+Lookups work without Anki. To save words you need [Anki Desktop](https://apps.ankiweb.net/) with the free [AnkiConnect](https://ankiweb.net/shared/info/2055492159) add-on.
+
+After installing, a **setup page** opens. It shows the exact AnkiConnect setting to copy, checks the connection, and creates a deck per language. You can open it again from the settings ("Run setup again").
+
+<details>
+<summary>Setting up AnkiConnect by hand</summary>
+
+1. In Anki: **Tools → Add-ons → Get Add-ons…**, enter `2055492159`, restart Anki.
+2. **Tools → Add-ons → AnkiConnect → Config**, and add the extension's address to `webCorsOriginList`:
 
    ```json
-   {
-       "apiKey": null,
-       "apiLogPath": null,
-       "ignoreOriginList": [],
-       "webBindAddress": "127.0.0.1",
-       "webBindPort": 8765,
-       "webCorsOriginList": [
-           "http://localhost",
-           "moz-extension://62507959-2455-4db3-851d-e4b7ccd8ed3b"
-       ]
-   }
+   "webCorsOriginList": [
+       "http://localhost",
+       "moz-extension://YOUR-INTERNAL-UUID"
+   ]
    ```
 
-   This UUID is the one `npm start` uses (it is pinned in `web-ext-config.mjs`). If you installed the extension in your normal Firefox profile instead, use the UUID shown in `about:debugging#/runtime/this-firefox` next to the extension ("Internal UUID"). It stays the same for that profile.
-3. Click **Save** and restart Anki.
-4. In the extension settings, click **Test connection**. It should say "Connected".
-5. Under **Decks**, pick a deck for each language. Changing the deck on a card also changes it for that card's language.
+   The setup page shows this line ready to copy. You can also find the UUID in `about:debugging#/runtime/this-firefox` next to the extension, as "Internal UUID". With `npm start` it is always `62507959-2455-4db3-851d-e4b7ccd8ed3b` (pinned in `web-ext-config.mjs`).
+3. Save and restart Anki, then click **Test connection** in the extension settings.
 
-Keep `webBindAddress` at `127.0.0.1`, so only your own computer can reach Anki. An API key is not needed then. If you set one in AnkiConnect, enter the same key in the extension settings.
+Keep `webBindAddress` at `127.0.0.1` so only your own computer can reach Anki. If the connection still fails, check that the address is not under `ignoreOriginList`. AnkiConnect puts it there when you click **No** in its permission dialog.
 
-If the test still fails, make sure Anki is running and the origin is not listed under `ignoreOriginList`. AnkiConnect adds an origin there when you click **No** in its permission dialog.
+</details>
+
+### What goes on the card
+
+The built-in "Language Companion" note type is created on first use. Its fields:
+
+- Word
+- Translation
+- Definition (with the kanji breakdown)
+- Pronunciation (furigana or pinyin)
+- Audio
+- Sentence (the word highlighted)
+- SentenceTranslation
+- Example
+- Source (a link to the page or the moment in the video)
+- Language
+
+Notes are tagged with the language (`lc::ja`) and frequency (`lc::freq::jlpt-n5`, `lc::freq::top-2k`), and with `lc::youtube` or `lc::reader` depending on where you found the word. To use your own note type, map its fields in the settings.
 
 ## Usage
 
-| Action | How |
+Select a word and click the small **文A** button that appears, or open an article in the reader (toolbar button → **Open in reader**) and click any word.
+
+| Key | Action |
 | --- | --- |
-| Look up | Select text and click the small button (or change the trigger in settings) |
-| Look up | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> or right-click → Look up |
-| Look up and add right away | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> |
-| Open the reader | Toolbar popup → Open in reader, or right-click the page → Open in reader |
-| Look up in the reader | Click a word; Shift+click a second word for the phrase in between |
-| Quick peek | Hold <kbd>Shift</kbd> over a word in the reader or in YouTube subtitles |
-| Add to Anki | <kbd>Enter</kbd> |
-| Play pronunciation | <kbd>P</kbd> |
-| Edit fields | <kbd>E</kbd> |
-| Use the base form | <kbd>B</kbd> |
-| Show the sentence translation | <kbd>T</kbd> |
-| More / less (all definitions, kanji, examples) | <kbd>M</kbd> |
-| Close | <kbd>Esc</kbd> |
+| <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> | Look up the selection (also: right-click → Look up) |
+| <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> | Look up and add to Anki right away |
+| <kbd>Shift</kbd> (hold) | Quick peek in the reader and YouTube subtitles |
+| <kbd>Shift</kbd>+click | Select the phrase between two words (reader, YouTube) |
+| <kbd>Enter</kbd> | Add to Anki |
+| <kbd>M</kbd> | More or less: all definitions, kanji, examples |
+| <kbd>T</kbd> | Show the sentence translation |
+| <kbd>B</kbd> | Use the dictionary form instead |
+| <kbd>P</kbd> | Play the pronunciation |
+| <kbd>E</kbd> | Edit the fields |
+| <kbd>Esc</kbd> | Close |
 
-### YouTube
+The two global shortcuts can be changed in `about:addons` → ⚙ → **Manage Extension Shortcuts**. In the settings you can choose how the card opens (button, right away, or only by shortcut), turn sources on or off, and disable the extension on single sites.
 
-Turn on subtitles in the player (any track, including auto-generated and auto-translated ones), then click a word. Shift+click a second word to look up the phrase between the two. The card works in fullscreen too. The video resumes when the card closes; you can turn pausing and resuming off in settings.
+**YouTube:** turn on subtitles in the player (any track, including auto-generated ones) and click a word. The card works in fullscreen, and the video resumes when it closes.
 
-Saved notes get the subtitle line as the sentence, a Source link like `https://www.youtube.com/watch?v=…&t=83s` titled "Video title (1:23)", and the tag `lc::youtube`. The source language comes from the selected subtitle track.
+## Privacy
 
-Global shortcuts can be changed in `about:addons` → ⚙ → Manage Extension Shortcuts.
+There is no account, no analytics and no server of our own. Only the word you look up, and optionally its sentence, goes to the dictionary and translation services you turn on. The Chinese and kanji dictionaries and the frequency lists are built in and work offline. Settings, the lookup cache and your word history stay in Firefox. See [PRIVACY.md](PRIVACY.md) for each service and each permission.
 
-## Project structure
+## Development
+
+```sh
+npm start        # Firefox with the extension, reloads on changes
+npm test         # unit tests, no browser needed
+npm run lint     # web-ext lint
+npm run build    # package into web-ext-artifacts/
+```
+
+The code is plain JavaScript with no build step and no runtime dependencies.
 
 ```
 manifest.json
 src/
-  shared/        messages, languages, settings (plain scripts that fill globalThis.LC)
-  background/    message router, AnkiConnect client, lookup + cache
-    providers/   one file per translator / dictionary / example source
-  content/       selection handling and the in-page card (shadow DOM)
-  action/        toolbar popup
-  stats/         stats page and the numbers behind it
-  reader/        reader page and the script that finds the article
-  vendor/        Mozilla Readability (Apache-2.0)
-  welcome/       first-run setup page
+  background/    message router, lookup and cache, AnkiConnect client, offline queue
+    providers/   one file per translator, dictionary and example source
+  content/       selection handling, the lookup card (shadow DOM), quick peek, YouTube
+  reader/        reader page and the script that extracts the article
+  shared/        messages, languages, settings and furigana, shared by all pages
+  welcome/       first-run setup
   options/       settings page
-data/            bundled data: frequency lists, CC-CEDICT, KANJIDIC2 (built by the scripts in scripts/)
-store/           AMO listing text and screenshots (not packaged)
-test/            node:test unit tests with saved API responses
+  action/        toolbar popup
+  stats/         stats page
+  vendor/        Mozilla Readability
+data/            CC-CEDICT, KANJIDIC2 and frequency lists, built by scripts/
+scripts/         converts the upstream dictionaries into data/
+test/            node:test unit tests with saved API responses in test/fixtures
+store/           addons.mozilla.org listing text and screenshots (not packaged)
 ```
 
-### Adding a provider
+**How a lookup works:**
 
-Create `src/background/providers/<name>.js` exporting:
+1. The content script finds the word and its sentence.
+2. The background script decides the language from the script and your languages, then asks the translator and the dictionaries in parallel.
+3. Results are cached locally.
+4. The card renders in a closed shadow root, so page styles can't break it and it can't break the page.
+5. **Add to Anki** builds the note in `background/anki.js` and sends it to AnkiConnect. If Anki is closed, the note waits in a local queue.
+
+### Adding a dictionary or translator
+
+Create `src/background/providers/<name>.js`:
 
 ```js
 export default {
   id: "myprovider",
   name: "My Provider",
-  kind: "translate", // or "dictionary" / "examples"
+  kind: "dictionary", // "translate", "dictionary" or "examples"
   needsKey: false,
-  supports: (src, tgt) => true,
+  supports: (src, tgt) => src === "ja",
   async lookup({ text, src, tgt }, settings, ctx) {
-    // return { translation } or { ipa, audioUrl, definitions, examples } or { examples }
+    // return { translation } or { reading, definitions, examples } or { examples }
   },
 };
 ```
 
-Then register it in `providers/index.js` and add its host to `host_permissions` in the manifest.
+Register it in `providers/index.js`, add its host to `host_permissions` in `manifest.json`, and add a test with a saved response in `test/fixtures/`.
 
-## Privacy
+### Rebuilding the bundled data
 
-Selected text and the surrounding sentence go to the translation and dictionary services you enable. Nothing else leaves your computer (details in [PRIVACY.md](PRIVACY.md)). Settings live in Firefox sync storage. The lookup cache, the list of saved words behind the stats, and notes waiting for Anki stay local.
+The files in `data/` are generated from the upstream dictionaries and checked in:
 
-## Credits
+```sh
+node scripts/build-cedict.mjs      # CC-CEDICT → data/cedict/
+node scripts/build-kanjidic.mjs    # KANJIDIC2 → data/kanjidic/
+node scripts/build-frequency.mjs   # FrequencyWords → data/frequency/
+```
 
-Reader: [Readability](https://github.com/mozilla/readability) by Mozilla, Apache-2.0 (see [src/vendor/readability/LICENSE.md](src/vendor/readability/LICENSE.md)).
+## Contributing
 
-Chinese dictionary: [CC-CEDICT](https://cc-cedict.org/) by MDBG, CC BY-SA 4.0 (see [data/cedict/ATTRIBUTION.md](data/cedict/ATTRIBUTION.md)).
+Bug reports, ideas and pull requests are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first. For anything bigger than a small fix, open an issue so we can talk about the approach before you write the code.
 
-Kanji meanings: [KANJIDIC2](https://www.edrdg.org/wiki/index.php/KANJIDIC_Project) by EDRDG, CC BY-SA 4.0 (see [data/kanjidic/ATTRIBUTION.md](data/kanjidic/ATTRIBUTION.md)).
+**Planned:** a word list in the reader for adding several words at once, playing the sentence aloud, and audio clips from YouTube on the card. See [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
 
-Word frequency lists: [FrequencyWords](https://github.com/hermitdave/FrequencyWords) by Hermit Dave, CC BY-SA 4.0 (see [data/frequency/ATTRIBUTION.md](data/frequency/ATTRIBUTION.md)).
+## Acknowledgements
+
+Language Companion is built on the work of these projects:
+
+- [Jisho](https://jisho.org/), Japanese dictionary
+- [CC-CEDICT](https://cc-cedict.org/) by MDBG, Chinese dictionary, CC BY-SA 4.0 ([details](data/cedict/ATTRIBUTION.md))
+- [KANJIDIC2](https://www.edrdg.org/wiki/index.php/KANJIDIC_Project) by EDRDG, kanji meanings, CC BY-SA 4.0 ([details](data/kanjidic/ATTRIBUTION.md))
+- [FrequencyWords](https://github.com/hermitdave/FrequencyWords) by Hermit Dave, word frequency, CC BY-SA 4.0 ([details](data/frequency/ATTRIBUTION.md))
+- [Wiktionary](https://en.wiktionary.org/), [Tatoeba](https://tatoeba.org/), [Free Dictionary API](https://dictionaryapi.dev/) and [MyMemory](https://mymemory.translated.net/)
+- [Readability](https://github.com/mozilla/readability) by Mozilla, the reader's article extraction, Apache-2.0
+- [AnkiConnect](https://ankiweb.net/shared/info/2055492159), which makes all the Anki parts possible
 
 ## License
 
-MIT (see [LICENSE](LICENSE)). The bundled dictionaries and Readability keep their own licenses, listed under Credits.
-
-## Roadmap
-
-- Audio clips and screenshots from YouTube, more card templates, AI translation provider
+The code is under the [MIT License](LICENSE). The bundled dictionary data is under CC BY-SA 4.0 and Readability under Apache-2.0, as listed above.
