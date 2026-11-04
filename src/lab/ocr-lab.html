@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OCR Lab</title>
+    <link rel="stylesheet" href="../shared/page.css" />
+    <link rel="stylesheet" href="ocr-lab.css" />
+    <script type="module" src="ocr-lab.js"></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>OCR lab</h1>
+        <p class="muted">Developer test page for reading text in images. It is not part of the release.</p>
+      </header>
+
+      <section>
+        <h2>This browser</h2>
+        <dl id="environment"></dl>
+      </section>
+
+      <section>
+        <h2>Engine</h2>
+        <div class="fields">
+          <label>Language
+            <select id="language">
+              <option value="ja">Japanese</option>
+              <option value="ko">Korean</option>
+            </select>
+          </label>
+          <label>Backend
+            <select id="backend">
+              <option value="wasm">CPU (WebAssembly)</option>
+            </select>
+          </label>
+          <label>Threads
+            <select id="threads">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="4">4</option>
+            </select>
+          </label>
+          <label>Detection size
+            <select id="max-side">
+              <option value="640">640 px</option>
+              <option value="960" selected>960 px</option>
+              <option value="1280">1280 px</option>
+            </select>
+          </label>
+        </div>
+        <p><button type="button" id="load" class="primary">Load models</button> <span id="engine-status" class="muted"></span></p>
+      </section>
+
+      <section>
+        <h2>Images</h2>
+        <p class="muted small">Pick manga, manhwa or manhua pages. Paste the text of an image under it to score how many characters were read correctly.</p>
+        <div class="fields">
+          <input type="file" id="files" accept="image/*" multiple />
+        </div>
+        <div class="fields">
+          <input type="url" id="image-url" placeholder="Image address" />
+          <button type="button" id="add-url">Add</button>
+          <button type="button" id="allow-sites">Allow downloads from all sites</button>
+        </div>
+      </section>
+
+      <section id="summary" hidden>
+        <div class="section-head">
+          <h2>Summary</h2>
+          <button type="button" id="copy">Copy results</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Image</th><th>Size</th><th>First run</th><th>Repeat</th><th>Lines</th><th>Correct</th></tr>
+            </thead>
+            <tbody id="summary-rows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <div id="results"></div>
+    </main>
+
+    <template id="result-template">
+      <section class="result">
+        <h2 class="name"></h2>
+        <p class="timing muted"></p>
+        <canvas></canvas>
+        <ol class="lines"></ol>
+        <label>Expected text
+          <textarea rows="3" placeholder="Paste the text in this image to score it"></textarea>
+        </label>
+        <p class="score"></p>
+      </section>
+    </template>
+  </body>
+</html>

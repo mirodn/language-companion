@@ -20,7 +20,11 @@
     OPEN_READER: "openReader",
     QUEUE_FLUSH: "queueFlush",
     LOG_REMOVE: "logRemove",
+    OCR_PERMISSION: "ocrPermission",
+    OCR_SCAN: "ocrScan",
+    OCR_READ: "ocrRead",
     // Background -> content
     OPEN_CARD: "openCard",
+    IMAGE_TEXT_REFRESH: "imageTextRefresh",
   });
 })();

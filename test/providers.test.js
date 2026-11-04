@@ -9,7 +9,6 @@ import { parse as parseTatoeba } from "../src/background/providers/tatoeba.js";
 import { parse as parseJisho } from "../src/background/providers/jisho.js";
 import wiktionary from "../src/background/providers/wiktionary.js";
 import { stripParticle, verbCandidates } from "../src/background/korean.js";
-import cedict, { parse as parseCedict } from "../src/background/providers/cedict.js";
 import kanjidic, { parseFile as parseKanjidic } from "../src/background/providers/kanjidic.js";
 import { isPhrase, lookupDetails, lookupTranslation, resolveSourceLang } from "../src/background/lookup.js";
 import { createFrequency, frequencyLabel } from "../src/background/frequency.js";
@@ -69,35 +68,24 @@ test("Tatoeba prefers direct translations", () => {
 test("resolveSourceLang order: card, writing system, detection, page language", async () => {
   const detect = async () => ({ isReliable: true, languages: [{ language: "ko", percentage: 99 }] });
   const unreliable = async () => ({ isReliable: false, languages: [{ language: "ko", percentage: 40 }] });
-  assert.equal(await resolveSourceLang({ text: "x", sourceLang: "zh" }, detect), "zh");
+  assert.equal(await resolveSourceLang({ text: "x", sourceLang: "ja" }, detect), "ja");
   assert.equal(await resolveSourceLang({ text: "x", sourceLang: "auto" }, detect), "ko");
   assert.equal(await resolveSourceLang({ text: "x", pageLang: "ja-JP" }, unreliable), "ja");
   assert.equal(await resolveSourceLang({ text: "x" }, unreliable), "en");
 });
 
 test("resolveSourceLang recognizes writing systems before detection", async () => {
-  const detect = async () => ({ isReliable: true, languages: [{ language: "zh", percentage: 99 }] });
-  assert.equal(await resolveSourceLang({ text: "집" }, detect, ["ja"]), "ko");
-  assert.equal(await resolveSourceLang({ text: "ありがとう" }, detect, ["zh"]), "ja");
+  const detect = async () => ({ isReliable: true, languages: [{ language: "en", percentage: 99 }] });
+  assert.equal(await resolveSourceLang({ text: "집" }, detect), "ko");
+  assert.equal(await resolveSourceLang({ text: "ありがとう" }, detect), "ja");
   // A kanji word in a sentence with kana is Japanese.
-  assert.equal(await resolveSourceLang({ text: "学校", sentence: "学校に行きます。" }, detect, ["zh"]), "ja");
+  assert.equal(await resolveSourceLang({ text: "学校", sentence: "学校に行きます。" }, detect), "ja");
 });
-
-test("resolveSourceLang decides Han characters by the user's languages", async () => {
-  const detect = async () => ({ isReliable: true, languages: [{ language: "zh", percentage: 99 }] });
-  const unsure = async () => ({ isReliable: false, languages: [] });
-  assert.equal(await resolveSourceLang({ text: "学校" }, detect, ["ja"]), "ja");
-  assert.equal(await resolveSourceLang({ text: "学校" }, unsure, ["ko", "zh"]), "zh");
-  // Learning both: detection, then the page language, then the first one added.
-  assert.equal(await resolveSourceLang({ text: "学校" }, detect, ["ja", "zh"]), "zh");
-  assert.equal(await resolveSourceLang({ text: "学校", pageLang: "ja" }, unsure, ["zh", "ja"]), "ja");
-  assert.equal(await resolveSourceLang({ text: "学校" }, unsure, ["zh", "ja"]), "zh");
-  const english = async () => ({ isReliable: true, languages: [{ language: "en", percentage: 99 }] });
-  assert.equal(await resolveSourceLang({ text: "学校", sentence: "The word 学校 means school." }, english, ["zh", "ja"]), "zh");
-  // Learning neither (only Korean): detection, otherwise Japanese.
-  assert.equal(await resolveSourceLang({ text: "学校" }, unsure, ["ko"]), "ja");
+test("resolveSourceLang reads kanji without kana as Japanese", async () => {
+  const korean = async () => ({ isReliable: true, languages: [{ language: "ko", percentage: 99 }] });
+  assert.equal(await resolveSourceLang({ text: "学校" }, korean), "ja");
+  assert.equal(await resolveSourceLang({ text: "学校", sentence: "The word 学校 means school." }, korean), "ja");
 });
-
 test("resolveSourceLang skips unsupported detections and track languages", async () => {
   const detect = async () => ({ isReliable: true, languages: [{ language: "fr" }, { language: "ko" }] });
   assert.equal(await resolveSourceLang({ text: "x" }, detect), "ko");
@@ -309,23 +297,12 @@ test("Korean particles are stripped when the word as written has no Wiktionary e
 test("lookups are offered only for text in the user's languages", () => {
   const { isLearned } = globalThis.LC.languages;
   assert.equal(isLearned(["学校", "学校に行く"], ["ja"]), true);
-  // The kana in the sentence makes it Japanese, which a Chinese learner doesn't learn.
-  assert.equal(isLearned(["学校", "学校に行く"], ["zh"]), false);
-  assert.equal(isLearned(["学校", "我去学校"], ["zh"]), true);
+  assert.equal(isLearned(["学校"], ["ja"]), true);
   assert.equal(isLearned(["학교"], ["ja"]), false);
   assert.equal(isLearned(["학교"], ["ja", "ko"]), true);
-  assert.equal(isLearned(["house", "The house is big."], ["ja", "ko", "zh"]), false);
+  assert.equal(isLearned(["house", "The house is big."], ["ja", "ko"]), false);
   assert.equal(isLearned(["学校"], ["ko"]), false);
 });
-
-test("the card offers Japanese or Chinese only for Han text when both are learned", () => {
-  const { hanChoices } = globalThis.LC.languages;
-  assert.deepEqual(hanChoices(["学校", "学校"], ["zh", "ko", "ja"]), ["zh", "ja"]);
-  assert.deepEqual(hanChoices(["学校", "学校に行く"], ["ja", "zh"]), []);
-  assert.deepEqual(hanChoices(["学校"], ["ja"]), []);
-  assert.deepEqual(hanChoices(["학교"], ["ja", "zh"]), []);
-});
-
 test("Korean verb endings lead back to the dictionary form", () => {
   const first = (word, n = 3) => verbCandidates(word).slice(0, n);
   assert.ok(first("먹었어요", 1).includes("먹다"));
@@ -355,30 +332,6 @@ test("Wiktionary tries the Korean verb's dictionary form", async () => {
   assert.deepEqual(result.base, { word: "가다", formOf: "conjugated form of 가다" });
   assert.deepEqual(result.definitions, [{ pos: "Verb", text: "to go" }]);
   assert.ok(urls.length <= 6, `at most a few requests, got ${urls.join(", ")}`);
-});
-
-test("CC-CEDICT finds both spellings and keeps several readings apart", async () => {
-  const shard = [
-    "学校\t學校\txué xiào\tschool/Classifier: 所",
-    "行\t行\tháng\trow; line/line of business",
-    "行\t行\théng\tused in 道行 (dào héng)",
-    "行\t行\txíng\tto walk; to go/capable",
-    "李\t李\tLǐ\tsurname Li",
-    "李\t李\tlǐ\tplum",
-  ].join("\n");
-  assert.deepEqual(parseCedict(shard, "學校"), {
-    reading: "xué xiào",
-    definitions: [{ pos: "", text: "school" }, { pos: "", text: "Classifier: 所" }],
-  });
-  const walk = parseCedict(shard, "行");
-  assert.equal(walk.reading, "háng / xíng");
-  assert.deepEqual(walk.definitions.slice(0, 2), [{ pos: "háng", text: "row; line" }, { pos: "xíng", text: "to walk; to go" }]);
-  assert.deepEqual(parseCedict(shard, "李"), { reading: "lǐ", definitions: [{ pos: "", text: "surname Li" }, { pos: "", text: "plum" }] });
-  assert.deepEqual(parseCedict(shard, "猫"), { reading: "", definitions: [] });
-
-  const loaded = [];
-  await cedict.lookup({ text: "学校" }, DEFAULTS, { loadShard: async (n) => (loaded.push(n), shard) });
-  assert.deepEqual(loaded, ["学".codePointAt(0) % 64]);
 });
 
 test("KANJIDIC breaks a Japanese word into its kanji", async () => {

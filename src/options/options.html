@@ -20,12 +20,81 @@
 
       <section>
         <h2>Languages</h2>
-        <p class="muted">The languages you learn. Lookups are offered only for text in these languages. Words are translated into English and saved to the deck of their language.</p>
+        <p class="muted">The languages you learn. Lookups are offered only for text in these languages, and words are translated into English. With Anki on, each language saves to its own deck.</p>
         <div id="language-rows"></div>
       </section>
 
       <section>
+        <h2>Translation &amp; dictionaries</h2>
+        <div class="row">
+          <label for="translator">Translator</label>
+          <select id="translator" data-setting="translator">
+            <option value="mymemory">MyMemory (free, no key)</option>
+            <option value="deepl">DeepL (API key)</option>
+            <option value="libretranslate">LibreTranslate (self-hosted)</option>
+          </select>
+        </div>
+        <div class="row" data-show-for="mymemory">
+          <label for="myMemoryEmail">Email for MyMemory <span class="muted">(optional, raises daily limit)</span></label>
+          <input type="email" id="myMemoryEmail" data-setting="myMemoryEmail" />
+        </div>
+        <div class="row" data-show-for="deepl">
+          <label for="deeplKey">DeepL API key</label>
+          <input type="password" id="deeplKey" data-setting="deeplKey" autocomplete="off" />
+        </div>
+        <div class="row" data-show-for="libretranslate">
+          <label for="libreUrl">LibreTranslate URL</label>
+          <div class="inline">
+            <input type="url" id="libreUrl" data-setting="libreUrl" placeholder="http://localhost:5000" />
+            <button type="button" class="grant" data-for="libreUrl" hidden>Allow access</button>
+          </div>
+        </div>
+        <div class="row" data-show-for="libretranslate">
+          <label for="libreKey">LibreTranslate API key <span class="muted">(optional)</span></label>
+          <input type="password" id="libreKey" data-setting="libreKey" autocomplete="off" />
+        </div>
+        <div class="row">
+          <span></span>
+          <div>
+            <label class="choice"><input type="checkbox" data-setting="translateSentence" /> Also translate the surrounding sentence</label>
+            <label class="choice"><input type="checkbox" data-setting="showSentenceTranslation" /> Show the sentence translation right away <span class="muted">(otherwise click “Show translation” or press T, so you can try the sentence first)</span></label>
+          </div>
+        </div>
+        <div class="row">
+          <span>Sources</span>
+          <div>
+            <label class="choice"><input type="checkbox" data-setting="providers.freedictionary" /> Free Dictionary <span class="muted">(English: IPA, audio, definitions)</span></label>
+            <label class="choice"><input type="checkbox" data-setting="providers.jisho" /> Jisho <span class="muted">(Japanese: readings for furigana, definitions)</span></label>
+            <label class="choice"><input type="checkbox" data-setting="providers.kanjidic" /> KANJIDIC <span class="muted">(Japanese: meaning of each kanji; built in, works offline)</span></label>
+            <label class="choice"><input type="checkbox" data-setting="providers.wiktionary" /> Wiktionary <span class="muted">(definitions in English, most languages)</span></label>
+            <label class="choice"><input type="checkbox" data-setting="providers.tatoeba" /> Tatoeba <span class="muted">(example sentences)</span></label>
+            <label class="choice"><input type="checkbox" data-setting="providers.frequency" /> Word frequency <span class="muted">("Top 2k" badge, from movie subtitles; JLPT level for Japanese)</span></label>
+          </div>
+        </div>
+        <div class="row">
+          <label for="maxDefinitions">Definitions shown</label>
+          <input type="number" id="maxDefinitions" data-setting="maxDefinitions" min="1" max="10" />
+        </div>
+        <div class="row">
+          <label for="maxExamples">Examples shown</label>
+          <input type="number" id="maxExamples" data-setting="maxExamples" min="0" max="10" />
+        </div>
+        <div class="row">
+          <span></span>
+          <div class="inline">
+            <button type="button" id="clear-cache">Clear lookup cache</button>
+            <span id="cache-status" class="muted"></span>
+          </div>
+        </div>
+      </section>
+
+      <section>
         <h2>Anki</h2>
+        <div class="row">
+          <span></span>
+          <label class="choice"><input type="checkbox" data-setting="ankiEnabled" /> Save words to Anki <span class="muted">(optional: adds a deck and an “Add to Anki” button to the card)</span></label>
+        </div>
+        <div id="anki-settings">
         <p class="muted">
           Requires Anki Desktop with the
           <a href="https://ankiweb.net/shared/info/2055492159" target="_blank" rel="noreferrer">AnkiConnect</a> add-on.
@@ -82,70 +151,6 @@
           <span></span>
           <label class="choice"><input type="checkbox" data-setting="saveAudio" /> Save pronunciation audio when available</label>
         </div>
-      </section>
-
-      <section>
-        <h2>Translation &amp; dictionaries</h2>
-        <div class="row">
-          <label for="translator">Translator</label>
-          <select id="translator" data-setting="translator">
-            <option value="mymemory">MyMemory (free, no key)</option>
-            <option value="deepl">DeepL (API key)</option>
-            <option value="libretranslate">LibreTranslate (self-hosted)</option>
-          </select>
-        </div>
-        <div class="row" data-show-for="mymemory">
-          <label for="myMemoryEmail">Email for MyMemory <span class="muted">(optional, raises daily limit)</span></label>
-          <input type="email" id="myMemoryEmail" data-setting="myMemoryEmail" />
-        </div>
-        <div class="row" data-show-for="deepl">
-          <label for="deeplKey">DeepL API key</label>
-          <input type="password" id="deeplKey" data-setting="deeplKey" autocomplete="off" />
-        </div>
-        <div class="row" data-show-for="libretranslate">
-          <label for="libreUrl">LibreTranslate URL</label>
-          <div class="inline">
-            <input type="url" id="libreUrl" data-setting="libreUrl" placeholder="http://localhost:5000" />
-            <button type="button" class="grant" data-for="libreUrl" hidden>Allow access</button>
-          </div>
-        </div>
-        <div class="row" data-show-for="libretranslate">
-          <label for="libreKey">LibreTranslate API key <span class="muted">(optional)</span></label>
-          <input type="password" id="libreKey" data-setting="libreKey" autocomplete="off" />
-        </div>
-        <div class="row">
-          <span></span>
-          <div>
-            <label class="choice"><input type="checkbox" data-setting="translateSentence" /> Also translate the surrounding sentence</label>
-            <label class="choice"><input type="checkbox" data-setting="showSentenceTranslation" /> Show the sentence translation right away <span class="muted">(otherwise click “Show translation” or press T, so you can try the sentence first)</span></label>
-          </div>
-        </div>
-        <div class="row">
-          <span>Sources</span>
-          <div>
-            <label class="choice"><input type="checkbox" data-setting="providers.freedictionary" /> Free Dictionary <span class="muted">(English: IPA, audio, definitions)</span></label>
-            <label class="choice"><input type="checkbox" data-setting="providers.jisho" /> Jisho <span class="muted">(Japanese: readings for furigana, definitions)</span></label>
-            <label class="choice"><input type="checkbox" data-setting="providers.kanjidic" /> KANJIDIC <span class="muted">(Japanese: meaning of each kanji; built in, works offline)</span></label>
-            <label class="choice"><input type="checkbox" data-setting="providers.cedict" /> CC-CEDICT <span class="muted">(Chinese: pinyin, definitions; built in, works offline)</span></label>
-            <label class="choice"><input type="checkbox" data-setting="providers.wiktionary" /> Wiktionary <span class="muted">(definitions in English, most languages)</span></label>
-            <label class="choice"><input type="checkbox" data-setting="providers.tatoeba" /> Tatoeba <span class="muted">(example sentences)</span></label>
-            <label class="choice"><input type="checkbox" data-setting="providers.frequency" /> Word frequency <span class="muted">("Top 2k" badge, from movie subtitles; JLPT level for Japanese)</span></label>
-          </div>
-        </div>
-        <div class="row">
-          <label for="maxDefinitions">Definitions shown</label>
-          <input type="number" id="maxDefinitions" data-setting="maxDefinitions" min="1" max="10" />
-        </div>
-        <div class="row">
-          <label for="maxExamples">Examples shown</label>
-          <input type="number" id="maxExamples" data-setting="maxExamples" min="0" max="10" />
-        </div>
-        <div class="row">
-          <span></span>
-          <div class="inline">
-            <button type="button" id="clear-cache">Clear lookup cache</button>
-            <span id="cache-status" class="muted"></span>
-          </div>
         </div>
       </section>
 
@@ -196,8 +201,8 @@
         <table class="shortcuts">
           <tbody>
             <tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd></td><td>Look up the selection</td></tr>
-            <tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd></td><td>Look up and add to Anki right away</td></tr>
-            <tr><td><kbd>Enter</kbd></td><td>Add to Anki (card open)</td></tr>
+            <tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd></td><td>Look up and add to Anki right away (with Anki on)</td></tr>
+            <tr><td><kbd>Enter</kbd></td><td>Add to Anki (card open, with Anki on)</td></tr>
             <tr><td><kbd>P</kbd></td><td>Play pronunciation (card open)</td></tr>
             <tr><td><kbd>E</kbd></td><td>Edit fields (card open)</td></tr>
             <tr><td><kbd>B</kbd></td><td>Use the base form (card open)</td></tr>

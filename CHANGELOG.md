@@ -4,6 +4,27 @@ All notable changes to Language Companion. The format follows [Keep a Changelog]
 
 ## [Unreleased]
 
+Language Companion now focuses on understanding Japanese and Korean. Translating comes first; saving to Anki is optional.
+
+### Reading and watching
+
+- Text in images: on manga and webtoon sites, the extension finds the speech bubbles in the pages. Click one to see its text and its translation next to it, then select words or whole sentences to look them up, with the bubble as the card's sentence. Japanese is read with manga-ocr, which was trained on manga; Korean with PaddleOCR. On by default for Shonen Jump+; other sites have a switch in the toolbar menu. It runs on your computer and needs a one-time permission and a one-time download (about 120 MB for Japanese, 20 MB for Korean)
+
+### Lookup card
+
+- Selecting another word while the card is open shows that word in the same card, instead of closing it first. A plain click elsewhere still closes it, and while you edit a card, clicks on the page leave it alone
+- Drag the card by its header to move it. It stays at that spot on screen for the next words until you close it. Double-click the header to put it back next to the selection
+- The sentence translation is shown right away. "Show the sentence translation right away" in the settings turns this off again
+
+### Anki
+
+- Saving to Anki is optional and off for new installs: the card then only translates, without a deck menu, Edit or Add to Anki, and the toolbar menu leaves out the Anki status and stats. Turn it on under Settings → Anki or on the setup page. If you already saved words or chose decks, it stays on
+- The setup page starts with your languages and a place to try a lookup; connecting Anki is an optional last section
+
+### Removed
+
+- Chinese: the CC-CEDICT dictionary, pinyin, the Japanese | Chinese switch on the card, and the Chinese word frequency list. Kanji-only text is now always looked up as Japanese. If Chinese was your only language, the setting falls back to Japanese
+
 ## [0.4.0] - 2026-10-31
 
 The first public release.

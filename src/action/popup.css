@@ -37,6 +37,10 @@ header {
   margin: 6px 0;
 }
 
+.toggle[hidden] {
+  display: none;
+}
+
 .hint {
   margin: 12px 0 0;
   font-size: 12px;

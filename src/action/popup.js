@@ -25,6 +25,39 @@ async function showSummary() {
   $("#summary").hidden = false;
 }
 
+// Text in images (manga, webtoons) for the current site. It needs the all-sites permission,
+// because Firefox only lets extensions capture a tab without a click with <all_urls>.
+async function setupImageText(settings) {
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+  let hostname = "";
+  try {
+    const url = new URL(tab?.url ?? "");
+    if (url.protocol === "http:" || url.protocol === "https:") hostname = url.hostname.replace(/^www\./, "");
+  } catch {
+    // No page URL (e.g. a new tab).
+  }
+  if (!hostname) return;
+  const ALL_SITES = { origins: ["<all_urls>"] };
+  const listed = settings.imageTextSites.some((site) => hostname === site || hostname.endsWith(`.${site}`));
+  $("#image-text-site").textContent = hostname;
+  $("#image-text").checked = listed && (await browser.permissions.contains(ALL_SITES));
+  $("#image-text-row").hidden = false;
+
+  $("#image-text").addEventListener("change", async (e) => {
+    const sites = settings.imageTextSites.filter((site) => hostname !== site && !hostname.endsWith(`.${site}`));
+    if (!e.target.checked) {
+      await settingsStore.saveSettings({ imageTextSites: sites });
+      return;
+    }
+    // Saved without waiting: permissions.request has to run directly in the click handler, and
+    // Firefox may close this popup while its prompt is open. The background tells the tabs once
+    // the permission is granted.
+    settings.imageTextSites = [...sites, hostname];
+    settingsStore.saveSettings({ imageTextSites: settings.imageTextSites });
+    e.target.checked = await browser.permissions.request(ALL_SITES);
+  });
+}
+
 async function init() {
   const settings = await settingsStore.getSettings();
 
@@ -33,6 +66,8 @@ async function init() {
 
   $("#youtube-enabled").checked = settings.youtubeEnabled;
   $("#youtube-enabled").addEventListener("change", (e) => settingsStore.saveSettings({ youtubeEnabled: e.target.checked }));
+
+  setupImageText(settings);
 
   $("#open-options").addEventListener("click", (e) => {
     e.preventDefault();
@@ -55,6 +90,10 @@ async function init() {
     $("#reader-error").hidden = false;
   });
 
+  // Anki status, saved words and stats only matter when saving to Anki is on.
+  $("#stats-link").hidden = !settings.ankiEnabled;
+  if (!settings.ankiEnabled) return;
+  $("#anki-status").hidden = false;
   showSummary();
   // A successful status check also adds waiting notes, which updates the log.
   browser.storage.onChanged.addListener((changes, area) => area === "local" && changes[STORAGE_KEY] && showSummary());

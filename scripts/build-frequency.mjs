@@ -4,8 +4,8 @@
 // Run with: node scripts/build-frequency.mjs
 import { mkdir, writeFile } from "node:fs/promises";
 
-// Our code -> FrequencyWords folder. The Chinese list is simplified Chinese.
-const LANGS = { en: "en", ko: "ko", zh: "zh_cn" };
+// Our code -> FrequencyWords folder.
+const LANGS = { en: "en", ko: "ko" };
 const SIZE = 20000;
 const SOURCE = "https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018";
 const OUT = new URL("../data/frequency/", import.meta.url);

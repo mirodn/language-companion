@@ -18,14 +18,17 @@ When you look up a word, the word goes to the dictionary services that are turne
 
 Nothing else is sent: not the page address, not the page content, not who you are. Each service handles requests under its own privacy policy.
 
-The Chinese dictionary (CC-CEDICT), the kanji dictionary (KANJIDIC2) and the word frequency lists are built into the extension and work offline.
+The kanji dictionary (KANJIDIC2) and the word frequency lists are built into the extension and work offline.
+
+**Text in images:** the first time it reads a page, the extension downloads its text recognition models from Hugging Face (huggingface.co): about 120 MB for Japanese (manga-ocr), 20 MB for Korean (PaddleOCR). This request contains nothing about you or the page. The models are then kept on your computer.
 
 ## What stays on your computer
 
-- **Anki:** words you save go to Anki on your own computer through AnkiConnect (`127.0.0.1`), together with the sentence and the page address and title as the source.
+- **Anki (optional, off unless you turn it on):** words you save go to Anki on your own computer through AnkiConnect (`127.0.0.1`), together with the sentence and the page address and title as the source.
 - **Settings**, including API keys, are kept in Firefox's sync storage. If you use Firefox Sync, Firefox syncs them between your devices, end-to-end encrypted.
 - **Local storage:** the lookup cache, the list of saved words behind the stats page, and notes waiting for Anki to open.
 - **Reader:** the article you open in the reader is kept in session storage until Firefox closes.
+- **Text in images:** on sites where you turned it on (Shonen Jump+ is on by default, once you allow it), the extension takes a screenshot of the visible part of the tab whenever the page changes and reads the text in it on your computer. Screenshots are never saved to disk or sent anywhere; the last one is kept in memory so the text can be read, and dropped when the page changes or the tab closes. When you open a speech bubble, its recognised text goes to your translator, like a sentence; words you select in it are looked up as above. Nothing is sent for bubbles you don't open.
 
 You can remove all of this by removing the extension.
 
@@ -37,9 +40,10 @@ You can remove all of this by removing the extension.
 - **Menus:** the right-click "Look up" and "Open in reader" entries.
 - **Access to the services above and to 127.0.0.1:8765** (AnkiConnect).
 - **Optional access to other sites:** asked for only when you enter your own LibreTranslate server or a different AnkiConnect address, and only for that address.
+- **Optional access to all websites:** asked for only when you turn on "Read text in images". Firefox lets extensions capture the visible part of a tab without a click only with this permission. The screenshots are used only on the sites where you turned the feature on.
 
 ## Contact
 
 Questions: open an issue at https://github.com/mirodn/language-companion.
 
-Last updated: 2026-10-31
+Last updated: 2026-11-04

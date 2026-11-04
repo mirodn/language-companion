@@ -1,4 +1,4 @@
-// First-run setup: languages, connecting Anki, decks, and a place to try a lookup.
+// First-run setup: languages, a place to try a lookup, and optionally connecting Anki and its decks.
 // Opened on install (background.js) and from the settings ("Run setup again").
 
 const { MSG, languages, settings: settingsStore } = globalThis.LC;
@@ -8,7 +8,6 @@ const $ = (selector) => document.querySelector(selector);
 const SAMPLES = {
   ja: { text: "週末は友達と新しいカフェに行きました。", translation: "I went to a new café with friends on the weekend." },
   ko: { text: "주말에 친구와 새로운 카페에 갔어요.", translation: "I went to a new café with a friend on the weekend." },
-  zh: { text: "周末我和朋友去了一家新咖啡馆。", translation: "On the weekend I went to a new café with a friend." },
 };
 const NEW_DECK = "new:";
 
@@ -45,7 +44,19 @@ function renderLanguages() {
   $("#languages").replaceChildren(...labels);
 }
 
-// --- 2. Anki --------------------------------------------------------------------------------
+// --- Optional: Anki -------------------------------------------------------------------------
+
+function renderAnki() {
+  $("#anki-enabled").checked = settings.ankiEnabled;
+  $("#anki-setup").hidden = !settings.ankiEnabled;
+}
+
+async function toggleAnki(enabled) {
+  settings.ankiEnabled = enabled;
+  await settingsStore.saveSettings({ ankiEnabled: enabled });
+  renderAnki();
+  if (enabled) checkAnki({ quiet: true });
+}
 
 async function checkAnki({ quiet = false } = {}) {
   const status = $("#anki-status");
@@ -67,7 +78,7 @@ async function checkAnki({ quiet = false } = {}) {
   }
 }
 
-// --- 3. Decks -------------------------------------------------------------------------------
+// Decks
 
 // Saved deck, else an existing deck named like the language, else none yet (Anki's "Default").
 function currentDeck(code) {
@@ -118,7 +129,7 @@ async function chooseDeck(code, value) {
   renderDecks();
 }
 
-// --- 4. Try it ------------------------------------------------------------------------------
+// --- Try it ---------------------------------------------------------------------------------
 
 function renderSamples() {
   // The translation is outside the paragraph, so it doesn't end up in the saved sentence.
@@ -132,6 +143,7 @@ function renderSamples() {
 
 function renderAll() {
   renderLanguages();
+  renderAnki();
   renderDecks();
   renderSamples();
 }
@@ -153,14 +165,15 @@ async function init() {
   bindCopyButtons();
   renderAll();
 
+  $("#anki-enabled").addEventListener("change", (event) => toggleAnki(event.target.checked));
   $("#check-anki").addEventListener("click", () => checkAnki());
   // Coming back from Anki's config is the moment it may have started working.
-  window.addEventListener("focus", () => !decks && checkAnki({ quiet: true }));
+  window.addEventListener("focus", () => settings.ankiEnabled && !decks && checkAnki({ quiet: true }));
   $("#open-options").addEventListener("click", (event) => {
     event.preventDefault();
     browser.runtime.openOptionsPage();
   });
-  checkAnki({ quiet: true });
+  if (settings.ankiEnabled) checkAnki({ quiet: true });
 }
 
 init();

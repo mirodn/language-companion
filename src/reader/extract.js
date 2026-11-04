@@ -2,7 +2,7 @@
 // Finds the article with Readability, on a copy so the page itself stays untouched.
 // The value of the last expression is the result of scripting.executeScript.
 (() => {
-  // Japanese, Korean and Chinese pack a lot into few characters; Readability's default (500)
+  // Japanese and Korean pack a lot into few characters; Readability's default (500)
   // would reject many short articles.
   const MIN_ARTICLE_LENGTH = 150;
 

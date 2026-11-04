@@ -6,6 +6,8 @@
 
   const CARD_WIDTH = 360;
   const GAP = 8;
+  // How far the pointer has to move before pressing the header becomes a drag.
+  const DRAG_THRESHOLD = 4;
 
   // Minimal element builder: h("div", { class: "x", onClick }, child, "text").
   function h(tag, props = {}, ...children) {
@@ -34,13 +36,16 @@
   }
 
   class CompanionUI {
-    // options: { showSentenceTranslation }
-    // handlers: { onTrigger, onAdd, onOpenInAnki, onSourceLangChange, onUseBaseForm, onDeckChange, onCardChanged, onClose }
+    // options: { showSentenceTranslation, anki }: anki adds choosing, editing and saving the note.
+    // handlers: { onTrigger, onAdd, onOpenInAnki, onUseBaseForm, onDeckChange, onCardChanged, onClose }
     constructor({ css, theme, options = {}, handlers }) {
       this.handlers = handlers;
       this.options = options;
       this.state = null;
       this.anchor = null;
+      // Where the user dragged the card, in viewport coordinates. Kept between lookups until the
+      // card closes, so the card can be parked in one place while reading.
+      this.pinned = null;
       // Whether the card shows everything (all definitions, kanji, examples). Kept between lookups.
       this.expanded = false;
 
@@ -60,7 +65,14 @@
         },
         "文A",
       );
-      this.card = h("div", { class: "card", role: "dialog", "aria-label": "Language Companion", hidden: true });
+      this.card = h("div", {
+        class: "card",
+        role: "dialog",
+        "aria-label": "Language Companion",
+        hidden: true,
+        onPointerdown: (event) => this.startDrag(event),
+        onDblclick: (event) => this.isDragHandle(event.target) && this.unpin(),
+      });
       this.shadow.append(h("style", {}, css), this.trigger, this.card);
       this.setTheme(theme);
       this.attach();
@@ -103,6 +115,10 @@
 
     get isOpen() {
       return Boolean(this.state);
+    }
+
+    get isEditing() {
+      return Boolean(this.state?.editing);
     }
 
     contains(target) {
@@ -166,6 +182,7 @@
     close() {
       if (!this.state) return;
       this.state = null;
+      this.pinned = null;
       this.card.hidden = true;
       this.card.replaceChildren();
       this.handlers.onClose?.();
@@ -316,7 +333,7 @@
         else this.close();
         return true;
       }
-      if (event.key === "Enter" && !["TEXTAREA", "SELECT", "BUTTON", "A"].includes(focused?.tagName)) {
+      if (event.key === "Enter" && this.options.anki && !["TEXTAREA", "SELECT", "BUTTON", "A"].includes(focused?.tagName)) {
         this.add();
         return true;
       }
@@ -325,7 +342,7 @@
         this.playAudio();
         return true;
       }
-      if (event.key === "e" || event.key === "E") {
+      if ((event.key === "e" || event.key === "E") && this.options.anki) {
         this.toggleEdit();
         return true;
       }
@@ -358,7 +375,7 @@
               ? this.renderEditor()
               : this.renderResult();
       this.card.replaceChildren(
-        ...[...body, s.status === "ready" && this.renderFooter()].flat().filter((child) => child != null && child !== false),
+        ...[...body, s.status === "ready" && this.options.anki && this.renderFooter()].flat().filter((child) => child != null && child !== false),
       );
       this.position();
     }
@@ -408,6 +425,15 @@
     renderDefinitionChoices() {
       const { result, selectedDefinitions } = this.state;
       if (!result.definitions.length) return null;
+      // Without Anki there is nothing to choose for: just the list.
+      if (!this.options.anki) {
+        return h(
+          "div",
+          { class: "section definitions" },
+          h("div", { class: "label" }, "Definitions"),
+          result.definitions.map((def) => h("div", { class: "definition" }, def.pos && h("span", { class: "pos" }, def.pos), def.text)),
+        );
+      }
       return h(
         "div",
         { class: "section" },
@@ -446,6 +472,16 @@
     renderExamples() {
       const { result, selectedExample } = this.state;
       if (!result.examples.length) return null;
+      if (!this.options.anki) {
+        return h(
+          "div",
+          { class: "section" },
+          h("div", { class: "label" }, result.examples.length === 1 ? "Example" : "Examples"),
+          result.examples.map((example) =>
+            h("div", { class: "example" }, example.text, example.translation && h("span", { class: "muted block" }, example.translation)),
+          ),
+        );
+      }
       return h(
         "div",
         { class: "section" },
@@ -540,32 +576,14 @@
         "div",
         { class: "base" },
         h("span", { class: "muted" }, "Base form: "),
-        h("button", { class: "link", title: "Look up and save the base form instead (B)", onClick: () => this.useBaseForm() }, result.base.word),
+        h("button", { class: "link", title: "Look up the base form instead (B)", onClick: () => this.useBaseForm() }, result.base.word),
         grammar && h("span", { class: "muted" }, ` · ${grammar}`),
       );
     }
 
-    // The word's language as a quiet label. Han-only text that could be Japanese or Chinese (and
-    // the user learns both) gets a switch instead; everything else is clear from the script.
+    // The word's language as a quiet label.
     renderLanguage() {
-      const { result } = this.state;
-      const choices = result.languageChoices ?? [];
-      if (choices.length < 2) return h("span", { class: "lang" }, languages.name(result.sourceLang));
-      return h(
-        "span",
-        { class: "lang-switch", role: "group", "aria-label": "Language" },
-        choices.map((code) =>
-          h(
-            "button",
-            {
-              class: code === result.sourceLang ? "active" : "",
-              "aria-pressed": String(code === result.sourceLang),
-              onClick: () => code !== result.sourceLang && this.handlers.onSourceLangChange(code),
-            },
-            languages.name(code),
-          ),
-        ),
-      );
+      return h("span", { class: "lang" }, languages.name(this.state.result.sourceLang));
     }
 
     renderEditor() {
@@ -629,8 +647,48 @@
       );
     }
 
-    // Places the card below the selection, or above it if there is no room below.
+    // --- Dragging --------------------------------------------------------------
+
+    // The header moves the card, except for its buttons and other controls.
+    isDragHandle(target) {
+      return Boolean(target.closest?.(".header") && !target.closest("button, a, input, select, textarea"));
+    }
+
+    startDrag(event) {
+      if (event.button !== 0 || !this.isDragHandle(event.target)) return;
+      const rect = this.card.getBoundingClientRect();
+      const start = { x: event.clientX, y: event.clientY, left: rect.left, top: rect.top };
+      const move = (moveEvent) => {
+        const dx = moveEvent.clientX - start.x;
+        const dy = moveEvent.clientY - start.y;
+        if (!this.card.classList.contains("dragging") && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+        this.card.classList.add("dragging");
+        this.pinned = { left: start.left + dx, top: start.top + dy };
+        this.position();
+      };
+      const end = () => {
+        this.card.classList.remove("dragging");
+        this.card.removeEventListener("pointermove", move);
+        this.card.removeEventListener("pointerup", end);
+        this.card.removeEventListener("pointercancel", end);
+      };
+      this.card.setPointerCapture(event.pointerId);
+      this.card.addEventListener("pointermove", move);
+      this.card.addEventListener("pointerup", end);
+      this.card.addEventListener("pointercancel", end);
+    }
+
+    // Back to its place next to the selection.
+    unpin() {
+      this.pinned = null;
+      this.position();
+    }
+
+    // Places the card where the user dragged it, or else below the selection (above it if there
+    // is no room below).
     position() {
+      if (this.pinned) return this.positionPinned();
+      this.card.style.position = "";
       if (!this.anchor) return;
       const height = this.card.offsetHeight;
       const bounds = this.bounds();
@@ -642,6 +700,18 @@
       const left = Math.max(bounds.left + GAP, Math.min(this.anchor.left, maxLeft));
       this.card.style.top = `${top}px`;
       this.card.style.left = `${left}px`;
+    }
+
+    // A dragged card stays at the same spot on screen while the page scrolls, and inside the window.
+    positionPinned() {
+      const left = Math.max(GAP, Math.min(this.pinned.left, window.innerWidth - this.card.offsetWidth - GAP));
+      const top = Math.max(GAP, Math.min(this.pinned.top, window.innerHeight - this.card.offsetHeight - GAP));
+      // In fullscreen the host lives in the fullscreen element, which fills the screen.
+      const onPage = this.host.parentElement === document.documentElement;
+      const local = onPage ? { left, top } : this.toLocal({ left, top, right: left, bottom: top });
+      this.card.style.position = onPage ? "fixed" : "";
+      this.card.style.top = `${local.top}px`;
+      this.card.style.left = `${local.left}px`;
     }
   }
 

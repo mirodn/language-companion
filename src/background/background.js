@@ -5,6 +5,7 @@ import { lookupDetails, lookupTranslation, peekWord } from "./lookup.js";
 import { createFrequency } from "./frequency.js";
 import { getCached, setCached } from "./cache.js";
 import { flushQueue, loadLog, logAdded, queueNote, removeEntry } from "./word-log.js";
+import * as ocr from "./ocr.js";
 
 const { MSG, settings: settingsStore } = globalThis.LC;
 
@@ -13,7 +14,17 @@ const { MSG, settings: settingsStore } = globalThis.LC;
 browser.runtime.onInstalled.addListener(({ reason }) => {
   setupMenus();
   if (reason === "install") browser.tabs.create({ url: browser.runtime.getURL("src/welcome/welcome.html") });
+  if (reason === "update") keepAnkiForExistingUsers();
 });
+
+// Saving to Anki became optional and off by default in 0.5. Users who already saved words or
+// chose decks keep it on.
+async function keepAnkiForExistingUsers() {
+  const { ankiEnabled, decks } = await browser.storage.sync.get(["ankiEnabled", "decks"]);
+  if (ankiEnabled !== undefined) return;
+  const usedAnki = (await loadLog()).length > 0 || Object.keys(decks ?? {}).length > 0;
+  if (usedAnki) await settingsStore.saveSettings({ ankiEnabled: true });
+}
 browser.runtime.onStartup.addListener(setupMenus);
 
 function setupMenus() {
@@ -208,13 +219,28 @@ const handlers = {
   },
 
   [MSG.LOG_REMOVE]: ({ id }) => removeEntry(id),
+
+  // Text in images (see ocr.js and content/image-text.js).
+  [MSG.OCR_PERMISSION]: () => ocr.hasPermission(),
+  [MSG.OCR_SCAN]: (message, sender) => ocr.scan(message, sender),
+  [MSG.OCR_READ]: (message, sender) => ocr.read(message, sender),
 };
 
+browser.tabs.onRemoved.addListener((tabId) => ocr.forgetTab(tabId));
+
+// Pages waiting for the permission start reading text in images without a reload.
+browser.permissions.onAdded.addListener(async ({ origins = [] }) => {
+  if (!origins.includes("<all_urls>")) return;
+  for (const tab of await browser.tabs.query({})) {
+    browser.tabs.sendMessage(tab.id, { type: MSG.IMAGE_TEXT_REFRESH }).catch(() => {});
+  }
+});
+
 // Every response is { ok: true, data } or { ok: false, error } so callers get readable errors.
-browser.runtime.onMessage.addListener((message) => {
+browser.runtime.onMessage.addListener((message, sender) => {
   const handler = handlers[message?.type];
   if (!handler) return undefined;
-  return handler(message).then(
+  return Promise.resolve(handler(message, sender)).then(
     (data) => ({ ok: true, data }),
     (error) => {
       // A failed request may mean the note type was deleted in Anki; check again next time.

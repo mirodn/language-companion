@@ -1,5 +1,5 @@
 // The reader: the article of another page (found by extract.js), cleaned up, with every word
-// clickable. That matters most for Japanese and Chinese, where words have no spaces between them
+// clickable. That matters most for Japanese, where words have no spaces between them
 // and are hard to select by hand. Click a word to look it up; Shift+click a second word to look up
 // the phrase in between. Selecting text works as on any page (content.js).
 (() => {
@@ -218,12 +218,9 @@
   }
 
   // The article's language: from its writing system (more reliable than the lang attribute, which
-  // many sites leave at "en"), then the lang attribute. Han-only text counts as the user's first
-  // of Japanese and Chinese.
-  function articleLang(text, settings) {
-    const sample = text.slice(0, 2000);
-    const han = languages.hasHan(sample) ? settings.learning.find((code) => code === "ja" || code === "zh") : null;
-    return languages.byScript(sample, settings.learning) ?? han ?? languages.normalize(article.lang) ?? article.lang ?? "";
+  // many sites leave at "en"), then the lang attribute.
+  function articleLang(text) {
+    return languages.byScript(text.slice(0, 2000)) ?? languages.normalize(article.lang) ?? article.lang ?? "";
   }
 
   async function init() {
@@ -250,7 +247,7 @@
     $("#original").textContent = `← ${new URL(article.url).hostname}`;
 
     const body = clean(new DOMParser().parseFromString(article.html, "text/html").body);
-    const lang = articleLang(body.textContent, settings);
+    const lang = articleLang(body.textContent);
     document.querySelector("main").lang = lang;
     $("#article").replaceChildren(body);
     if (!settings.learning.includes(lang)) {

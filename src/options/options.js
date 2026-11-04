@@ -59,6 +59,7 @@ function bindInputs() {
 }
 
 function onSettingChanged(path) {
+  if (path === "ankiEnabled") updateAnki();
   if (path === "translator") updateTranslatorRows();
   if (path === "noteTypeMode" || path === "mappedModel") updateMapping();
   if (path === "ankiUrl" || path === "libreUrl") updateGrantButtons();
@@ -92,7 +93,7 @@ function renderLanguages() {
     label.append(checkbox, ` ${name}`);
     row.append(label);
 
-    if (learning) {
+    if (learning && settings.ankiEnabled) {
       const select = document.createElement("select");
       select.id = `deck-${code}`;
       select.title = `Deck for ${name}`;
@@ -109,8 +110,20 @@ function renderLanguages() {
 function fillDeckSelects(decks) {
   ankiDecks = decks;
   for (const code of settings.learning) {
-    fillSelect($(`#deck-${code}`), decks, settingsStore.deckFor(settings, code));
+    const select = $(`#deck-${code}`);
+    if (select) fillSelect(select, decks, settingsStore.deckFor(settings, code));
   }
+}
+
+// The Anki settings and the decks next to the languages show only while saving to Anki is on.
+function updateAnki() {
+  $("#anki-settings").hidden = !settings.ankiEnabled;
+  renderLanguages();
+  if (!settings.ankiEnabled) return;
+  // Fill decks and note types quietly if Anki is already running.
+  loadAnkiLists().catch(() => {
+    $("#anki-status").textContent = "Anki not connected. Open Anki and click Test connection.";
+  });
 }
 
 // --- Translator -------------------------------------------------------------------
@@ -207,22 +220,17 @@ async function updateMapping() {
 
 async function init() {
   settings = await settingsStore.getSettings();
-  renderLanguages();
   bindInputs();
   bindGrantButtons();
   updateTranslatorRows();
   updateGrantButtons();
   updateMapping();
+  updateAnki();
 
   $("#test-anki").addEventListener("click", testAnki);
   $("#clear-cache").addEventListener("click", async () => {
     await clearCache();
     $("#cache-status").textContent = "Cache cleared.";
-  });
-
-  // Fill decks and note types quietly if Anki is already running.
-  loadAnkiLists().catch(() => {
-    $("#anki-status").textContent = "Anki not connected. Open Anki and click Test connection.";
   });
 }
 

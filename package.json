@@ -6,12 +6,18 @@
   "description": "Firefox extension for learning languages while browsing, with Anki integration via AnkiConnect.",
   "type": "module",
   "scripts": {
+    "prestart": "node scripts/vendor-ort.mjs",
     "start": "web-ext run --source-dir . --browser-console --start-url https://en.wikipedia.org/wiki/House",
+    "prelint": "node scripts/vendor-ort.mjs",
     "lint": "web-ext lint --source-dir .",
+    "prebuild": "node scripts/vendor-ort.mjs",
     "build": "web-ext build --source-dir . --overwrite-dest",
-    "test": "node --test \"test/*.test.js\""
+    "test": "node --test \"test/*.test.js\"",
+    "prelab": "node scripts/vendor-ort.mjs",
+    "lab": "web-ext run --source-dir . --browser-console --start-url moz-extension://62507959-2455-4db3-851d-e4b7ccd8ed3b/src/lab/ocr-lab.html"
   },
   "devDependencies": {
+    "onnxruntime-web": "1.31.1",
     "web-ext": "^8.3.0"
   }
 }

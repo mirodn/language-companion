@@ -9,7 +9,6 @@
   const LANGUAGES = [
     { code: "ja", name: "Japanese", tatoeba: "jpn", deepl: "JA", cjk: true },
     { code: "ko", name: "Korean", tatoeba: "kor", deepl: "KO" },
-    { code: "zh", name: "Chinese", tatoeba: "cmn", deepl: "ZH", cjk: true },
     // Everything is translated into English. English words get definitions only.
     { code: "en", name: "English", tatoeba: "eng", deepl: "EN" },
   ];
@@ -22,7 +21,7 @@
   const HANGUL = /[가-힯ᄀ-ᇿ㄰-㆏]/;
   const HAN = /[㐀-䶿一-鿿]/;
 
-  // Normalizes tags like "ja-JP", "zh_TW" or "ko-KR" to a supported base code, or null.
+  // Normalizes tags like "ja-JP" or "ko-KR" to a supported base code, or null.
   function normalize(tag) {
     if (!tag) return null;
     const base = String(tag).toLowerCase().split(/[-_]/)[0];
@@ -30,34 +29,21 @@
   }
 
   // Kana means Japanese and Hangul Korean, checked in each text in turn (e.g. the word, then its
-  // sentence). Han characters alone can be Japanese kanji or Chinese hanzi, so the user's languages
-  // (`learning`) decide; with both or neither it stays open (null).
-  function byScript(texts, learning = []) {
+  // sentence). Kanji without kana is Japanese too, since it's the only language here that uses them.
+  function byScript(texts) {
     const list = [texts].flat().filter(Boolean);
     for (const text of list) {
       if (KANA.test(text)) return "ja";
       if (HANGUL.test(text)) return "ko";
     }
-    if (!list.some((text) => HAN.test(text))) return null;
-    const ja = learning.includes("ja");
-    const zh = learning.includes("zh");
-    if (ja === zh) return null;
-    return zh ? "zh" : "ja";
+    return list.some((text) => HAN.test(text)) ? "ja" : null;
   }
 
   // Whether text (e.g. [word, sentence]) is written in one of the user's languages. The extension
   // only offers lookups for those; everything else, English included, is left alone.
   function isLearned(texts, learning) {
-    const lang = byScript(texts, learning);
-    if (lang) return learning.includes(lang);
-    return [texts].flat().some((text) => HAN.test(text ?? "")) && learning.some((code) => code === "ja" || code === "zh");
-  }
-
-  // Japanese and Chinese, in the user's order, when Han-only text could be either; otherwise [].
-  function hanChoices(texts, learning) {
-    const unsure = [texts].flat().some((text) => HAN.test(text ?? "")) && !byScript(texts);
-    const choices = learning.filter((code) => code === "ja" || code === "zh");
-    return unsure && choices.length > 1 ? choices : [];
+    const lang = byScript(texts);
+    return Boolean(lang && learning.includes(lang));
   }
 
   LC.languages = Object.freeze({
@@ -70,7 +56,6 @@
     target: TARGET,
     byScript,
     isLearned,
-    hanChoices,
     hasHan: (text) => HAN.test(text ?? ""),
     // Sentence boundary characters, including CJK punctuation.
     sentenceBreak: /[.!?。！？…]+["'”’)\]」』]*\s*|\n{2,}/g,

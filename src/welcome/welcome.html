@@ -20,7 +20,7 @@
     <main>
       <header>
         <h1>Welcome to Language Companion</h1>
-        <p class="muted">Four short steps, and you can look up words on any page and save them to Anki.</p>
+        <p class="muted">Pick your languages and start translating words and sentences on any page. Saving words to Anki is optional.</p>
       </header>
 
       <section>
@@ -30,7 +30,20 @@
       </section>
 
       <section>
-        <h2><span class="step">2</span> Connect Anki <span id="anki-badge" class="badge"></span></h2>
+        <h2><span class="step">2</span> Try it</h2>
+        <p class="muted">Select a word below and click the small 文A button that appears.</p>
+        <div id="samples" class="samples"></div>
+        <p class="muted small">
+          On web pages it works the same way. For longer articles, use <b>Open in reader</b> in the toolbar popup: there you
+          just click a word. <a href="#" id="open-options">All settings</a>
+        </p>
+      </section>
+
+      <section>
+        <h2>Optional: save words to Anki <span id="anki-badge" class="badge"></span></h2>
+        <p class="muted">Turn words you look up into flashcards in <a href="https://apps.ankiweb.net/" target="_blank" rel="noreferrer">Anki</a>, with the sentence, reading, audio and a link back to the page.</p>
+        <label class="toggle"><input type="checkbox" id="anki-enabled" /> Save words to Anki</label>
+        <div id="anki-setup" hidden>
         <ol class="steps">
           <li>
             Install <a href="https://apps.ankiweb.net/" target="_blank" rel="noreferrer">Anki</a> and open it.
@@ -49,26 +62,11 @@
           <button type="button" id="check-anki" class="primary">Check connection</button>
           <span id="anki-status" class="muted">If Anki asks whether to allow this extension, click Yes.</span>
         </div>
-        <p class="muted small">
-          No Anki yet? You can still look up words. Words you save are kept and added once Anki is connected.
-        </p>
-      </section>
-
-      <section>
-        <h2><span class="step">3</span> Decks</h2>
+        <h3>Decks</h3>
         <p class="muted">Each language's words go to its own deck.</p>
         <div id="decks"></div>
         <p id="decks-hint" class="muted small">Connect Anki first to choose decks.</p>
-      </section>
-
-      <section>
-        <h2><span class="step">4</span> Try it</h2>
-        <p class="muted">Select a word below and click the small 文A button that appears.</p>
-        <div id="samples" class="samples"></div>
-        <p class="muted small">
-          On web pages it works the same way. For longer articles, use <b>Open in reader</b> in the toolbar popup: there you
-          just click a word. <a href="#" id="open-options">All settings</a>
-        </p>
+        </div>
       </section>
     </main>
   </body>

@@ -21,5 +21,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 The bundled data and third-party code keep their own licenses:
-- data/cedict, data/kanjidic, data/frequency: CC BY-SA 4.0 (see the ATTRIBUTION.md in each folder)
+- data/kanjidic, data/frequency: CC BY-SA 4.0 (see the ATTRIBUTION.md in each folder)
 - src/vendor/readability: Apache-2.0 (see src/vendor/readability/LICENSE.md)
+- src/vendor/onnxruntime-web (copied from npm at build time): MIT, Copyright (c) Microsoft Corporation

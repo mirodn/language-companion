@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Language Companion",
   "version": "0.4.0",
-  "description": "Learn Japanese, Korean and Chinese while you browse: look up words on any page, in a reader view or in YouTube subtitles, and save them to Anki.",
+  "description": "Understand Japanese and Korean while you browse: translate words and sentences on any page, in manga, in a reader view or in YouTube subtitles. Optionally save them to Anki.",
   "homepage_url": "https://github.com/mirodn/language-companion",
   "browser_specific_settings": {
     "gecko": {
@@ -40,8 +40,12 @@
     "https://jisho.org/*",
     "https://api.tatoeba.org/*"
   ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; upgrade-insecure-requests;"
+  },
   "optional_host_permissions": [
-    "*://*/*"
+    "*://*/*",
+    "<all_urls>"
   ],
   "background": {
     "scripts": [
@@ -61,7 +65,8 @@
         "src/shared/furigana.js",
         "src/content/selection.js",
         "src/content/popup-ui.js",
-        "src/content/content.js"
+        "src/content/content.js",
+        "src/content/image-text.js"
       ],
       "run_at": "document_idle"
     },

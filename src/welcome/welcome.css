@@ -43,6 +43,24 @@ h2 {
   color: var(--success);
 }
 
+h3 {
+  font-size: 14px;
+  margin: 20px 0 4px;
+}
+
+/* Optional Anki setup */
+
+.toggle {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-weight: 600;
+}
+
+#anki-setup {
+  margin-top: 12px;
+}
+
 .small {
   font-size: 12px;
 }

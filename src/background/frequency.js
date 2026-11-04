@@ -1,7 +1,7 @@
 // How common a word is, from the bundled lists in data/frequency (see ATTRIBUTION.md there).
 // Japanese has no list; Jisho's JLPT level and "common" flag are used instead (providers/jisho.js).
 
-export const FREQUENCY_LANGS = ["en", "ko", "zh"];
+export const FREQUENCY_LANGS = ["en", "ko"];
 const BANDS = [1000, 2000, 5000, 10000, 20000];
 // Korean lists hold inflected words (먹었다) and there is no source for base forms, so a word
 // missing from the list is not necessarily rare.

@@ -5,33 +5,26 @@ import { frequencyLabel } from "./frequency.js";
 const { languages } = globalThis.LC;
 
 // Picks the source language: chosen on the card > known content language (e.g. the subtitle
-// track) > writing system > detection > page language > English. `learning` (the user's languages)
-// decides whether Han characters alone are Japanese or Chinese.
-export async function resolveSourceLang(req, detectLanguage, learning = []) {
+// track) > writing system > detection > page language > English.
+export async function resolveSourceLang(req, detectLanguage) {
   const requested = req.sourceLang && req.sourceLang !== "auto" ? req.sourceLang : null;
   const explicit = languages.normalize(requested) ?? languages.normalize(req.contentLang);
   if (explicit) return explicit;
 
   const text = req.sentence || req.text;
-  const script = languages.byScript([req.text, req.sentence], learning);
+  const script = languages.byScript([req.text, req.sentence]);
   if (script) return script;
 
   if (detectLanguage) {
     try {
       const detected = await detectLanguage(text);
-      // Han characters can only be Japanese or Chinese, whatever language the sentence around them is in.
-      const fits = (code) => code && (!languages.hasHan(req.text) || code === "ja" || code === "zh");
-      const supported = (detected?.languages ?? []).map((l) => languages.normalize(l.language)).find(fits);
+      const supported = (detected?.languages ?? []).map((l) => languages.normalize(l.language)).find(Boolean);
       if (detected?.isReliable && supported) return supported;
     } catch {
       // Detection is best effort.
     }
   }
-  const page = languages.normalize(req.pageLang);
-  if (page) return page;
-  // Han characters without any other hint: the user's first of Japanese and Chinese.
-  if (languages.hasHan(req.text)) return learning.find((code) => code === "ja" || code === "zh") ?? "ja";
-  return "en";
+  return languages.normalize(req.pageLang) ?? "en";
 }
 
 // Dictionaries and example sources only know single words and short expressions, and the
@@ -47,7 +40,7 @@ function pickTranslator(settings, src, tgt) {
 }
 
 async function resolveLangs(req, settings, ctx) {
-  const src = await resolveSourceLang(req, ctx.detectLanguage, settings.learning);
+  const src = await resolveSourceLang(req, ctx.detectLanguage);
   return { text: req.text.trim(), src, tgt: languages.target };
 }
 

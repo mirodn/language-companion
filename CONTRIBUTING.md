@@ -15,7 +15,7 @@ Errors from the extension show up in `about:debugging#/runtime/this-firefox` →
 
 ## Suggesting a feature
 
-Open an issue describing what you were trying to do. The extension tries to stay small and focused on Japanese, Korean and Chinese learners who save words to Anki, so the use case matters more than the solution.
+Open an issue describing what you were trying to do. The extension tries to stay small and focused on Japanese and Korean learners who want to understand what they read, so the use case matters more than the solution.
 
 ## Pull requests
 

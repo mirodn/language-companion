@@ -6,8 +6,14 @@
   let settings = null;
   let ui = null;
   let lookupId = 0;
-  // Last lookup request, so changing the source language can repeat it.
+  // Last lookup request, so looking up the base form can reuse its sentence and context.
   let lastRequest = null;
+  // The lookup id when a click outside the card started. If the click ends without a new lookup
+  // or a new selection to look up, it was a plain click and closes the card.
+  let pressedAt = null;
+  // The selection the lookup button was shown for. Callers like image-text.js describe their
+  // selections better than the page selection does (sentence, context).
+  let offered = null;
   const closeListeners = [];
 
   async function send(type, payload = {}) {
@@ -26,7 +32,7 @@
   }
 
   function cardOptions() {
-    return { showSentenceTranslation: settings.showSentenceTranslation };
+    return { showSentenceTranslation: settings.showSentenceTranslation, anki: settings.ankiEnabled };
   }
 
   async function getUI() {
@@ -35,10 +41,9 @@
       theme: settings.theme,
       options: cardOptions(),
       handlers: {
-        onTrigger: () => openFromSelection(),
+        onTrigger: () => (offered ? runLookup(offered) : openFromSelection()),
         onAdd: (card) => addToAnki(card),
         onOpenInAnki: (card) => send(MSG.ANKI_BROWSE, { card }).catch((error) => ui.setAnkiState("error", error.message)),
-        onSourceLangChange: (sourceLang) => lastRequest && runLookup({ ...lastRequest, sourceLang }),
         // Same sentence and context, but the base word; the card remembers the original word.
         onUseBaseForm: (word) =>
           lastRequest &&
@@ -63,7 +68,7 @@
     return languages.isLearned([text, sentence], settings.learning);
   }
 
-  // "Japanese", "Japanese or Korean", "Japanese, Korean or Chinese"
+  // "Japanese", "Japanese or Korean"
   function myLanguageNames() {
     const names = settings.learning.map((code) => languages.name(code));
     return names.length > 1 ? `${names.slice(0, -1).join(", ")} or ${names.at(-1)}` : names[0];
@@ -109,13 +114,10 @@
       return;
     }
     if (id !== lookupId) return;
-    card.setResult({
-      ...result,
-      ...(request.surface ? { surface: request.surface } : {}),
-      // Han-only text when the user learns both Japanese and Chinese: the card offers a switch.
-      languageChoices: languages.hanChoices([request.surface ?? request.text, request.sentence], settings.learning),
-    });
+    card.setResult({ ...result, ...(request.surface ? { surface: request.surface } : {}) });
     const detailsShown = details.then((data) => id === lookupId && card.setDetails(data));
+    // Without Anki the card only translates.
+    if (!settings.ankiEnabled) return;
 
     const deck = LC.settings.deckFor(settings, result.sourceLang);
     let offline = false;
@@ -167,23 +169,42 @@
 
   // --- Page events ---------------------------------------------------------------
 
+  // Shows the lookup button next to a selection, or opens the card right away, as set in the
+  // settings. info: { text, sentence, rect, pageLang, context? } (see selection.js), or null.
+  function offerSelection(info) {
+    offered = null;
+    if (!info || !inMyLanguages(info.text, info.sentence)) {
+      ui?.hideTrigger();
+      return false;
+    }
+    offered = info;
+    if (settings.triggerMode === "instant") runLookup(info);
+    else if (settings.triggerMode === "icon") getUI().then((card) => card.showTrigger(info.rect));
+    return true;
+  }
+
+  // An open card stays open while the user selects the next word, and shows that word instead.
   document.addEventListener("mouseup", (event) => {
     if (!enabledHere() || ui?.contains(event.target) || event.button !== 0) return;
-    // The selection is only final after the mouseup has been processed.
+    const pressed = pressedAt;
+    pressedAt = null;
+    // The selection is only final after the mouseup has been processed, and clicks on words in
+    // the reader or in subtitles start their lookup in the click that follows.
     setTimeout(() => {
-      const info = selection.current(settings.maxSelectionLength);
-      if (!info || !inMyLanguages(info.text, info.sentence)) return ui?.hideTrigger();
-      if (settings.triggerMode === "instant") runLookup(info);
-      else if (settings.triggerMode === "icon") getUI().then((card) => card.showTrigger(info.rect));
+      // While a card is being edited, text on the page may be selected to copy into it.
+      if (ui?.isEditing) return;
+      const offered = offerSelection(selection.current(settings.maxSelectionLength));
+      if (!offered && pressed !== null && pressed === lookupId) ui?.close();
     }, 0);
   });
 
   document.addEventListener(
     "mousedown",
     (event) => {
-      if (!ui || ui.contains(event.target)) return;
+      if (!ui || ui.contains(event.target) || ui.isEditing) return;
       ui.hideTrigger();
-      ui.close();
+      if (event.button === 0) pressedAt = lookupId;
+      else ui.close();
     },
     true,
   );
@@ -226,7 +247,13 @@
   // Used by site integrations such as youtube.js.
   LC.companion = {
     lookup: runLookup,
+    // For selections the page's own events don't report, e.g. in image-text.js.
+    offerSelection: (info) => !ui?.isEditing && offerSelection(info),
     onClose: (listener) => closeListeners.push(listener),
+    // Whether an event target is the extension's card or lookup button.
+    contains: (target) => Boolean(ui?.contains(target)),
+    // The open card's viewport rect, or null.
+    cardRect: () => (ui?.isOpen ? ui.card.getBoundingClientRect() : null),
     get settings() {
       return settings;
     },

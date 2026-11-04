@@ -5,7 +5,7 @@ Everything to paste into the AMO forms, plus the steps. Nothing in `store/` goes
 ## Before each release
 
 1. Bump `version` in `manifest.json` and `package.json` (AMO refuses a version it has seen before).
-2. `npm test && npm run lint`: lint must report 0 errors. The two `innerHTML` warnings come from Mozilla's own Readability library and are fine.
+2. `npm test && npm run lint`: lint must report 0 errors. The two `innerHTML` warnings come from Mozilla's own Readability library, and the `import` warning from ONNX Runtime Web loading its own WebAssembly helper. All three are fine.
 3. `npm run build` creates `web-ext-artifacts/language_companion-<version>.zip`.
 4. Install that zip once in a clean profile (`about:debugging` → Load Temporary Add-on → pick the zip) and run the [smoke test](#smoke-test).
 
@@ -14,7 +14,7 @@ Everything to paste into the AMO forms, plus the steps. Nothing in `store/` goes
 1. Sign in at https://addons.mozilla.org/developers/ with a Firefox account and accept the developer agreement.
 2. **Submit a New Add-on** → **On this site** (public listing).
 3. Upload the zip. Platforms: tick **Firefox** only. Android lacks the right-click menu the reader uses.
-4. "Do you need to submit source code?" → **No**. Nothing is minified, bundled or transpiled. The data files in `data/` are dictionaries converted by the scripts in `scripts/` (explained in the reviewer notes below).
+4. "Do you need to submit source code?" → **No**. Our own code is not minified, bundled or transpiled. The only minified files are ONNX Runtime Web, copied unmodified from npm (explained in the reviewer notes below), and the data files in `data/` are dictionaries converted by the scripts in `scripts/`.
 5. Fill in the listing with the text below and add the three images from `store/screenshots/`.
 6. Submit. Reviews usually take from a few hours to a few days. Mozilla emails you the result.
 
@@ -38,7 +38,7 @@ npx web-ext sign --channel=listed --api-key=$AMO_JWT_ISSUER --api-secret=$AMO_JW
 
 **Summary** (250 characters max):
 
-> Learn Japanese, Korean and Chinese while you browse. Look up words on any page, in a clean reader view or in YouTube subtitles: readings, dictionary forms, kanji and pinyin, and save them to Anki in one click.
+> Understand Japanese and Korean while you browse. Translate words and sentences on any page, in manga, in a reader view or in YouTube subtitles: readings, dictionary forms and kanji. Optionally save words to Anki.
 
 **Categories:** Language Support
 
@@ -51,35 +51,32 @@ npx web-ext sign --channel=listed --api-key=$AMO_JWT_ISSUER --api-secret=$AMO_JW
 **Description:**
 
 ```
-Language Companion helps you learn Japanese, Korean and Chinese from real content: news, blogs, novels and YouTube. Select a word, understand it in context, and save it to Anki without leaving the page.
+Language Companion helps you understand Japanese and Korean in real content: news, blogs, novels, manga and YouTube. Select a word or a sentence and see what it means right there, without leaving the page.
 
-<b>Look up any word</b>
-• Translation, reading and the main definition at a glance; more definitions, kanji and example sentences one click away
-• Furigana for Japanese, pinyin for Chinese
+<b>Translate what you read</b>
+• Translation, reading and the main definition at a glance, plus the translation of the whole sentence
+• Furigana for Japanese
 • Conjugated words lead to their dictionary form: 食べました → 食べる, 갔어요 → 가다, 학교에 → 학교
 • Kanji breakdown: 学校 → 学 study · 校 school
 • JLPT level or word frequency ("Top 2k"), so you know what is worth learning first
-• The sentence translation stays hidden until you click, so you can try the sentence yourself first
+• Select the next word and the same card updates; drag it anywhere on screen while you read
+
+<b>Manga and webtoons</b>
+On sites like Shonen Jump+, click a speech bubble to see its text and translation, then select any word in it to look it up. The text is recognised on your computer: Japanese with manga-ocr, which was trained on manga, Korean with PaddleOCR. On by default for Shonen Jump+, one switch for other sites.
 
 <b>Reader</b>
-Open any article in a calm reader view where every word is clickable. This helps most with Japanese and Chinese, where words have no spaces between them. Hold Shift over a word for a quick peek at its reading and meaning.
+Open any article in a calm reader view where every word is clickable. This helps most with Japanese, where words have no spaces between them. Hold Shift over a word for a quick peek at its reading and meaning.
 
 <b>YouTube</b>
-Click a word in the subtitles. The video pauses, the card opens, and the subtitle line is saved as the sentence, with a link back to that moment in the video.
+Click a word in the subtitles. The video pauses, the card opens, and the subtitle line becomes the sentence.
 
-<b>Anki</b>
-• One click (or Enter) adds a note with the word, reading, meaning, sentence, audio and source
-• A deck per language, duplicate detection, your own note type if you like
-• Anki closed? Notes are saved and added as soon as Anki opens
-• A stats page shows words per week and your streak
-
-<b>Setup</b>
-A setup page walks you through connecting Anki (needs Anki Desktop with the free AnkiConnect add-on). Lookups work without Anki too.
+<b>Optional: Anki</b>
+Turn it on to save words as flashcards in one click, with the sentence, reading, audio and a link back to the page. A deck per language, duplicate detection, and notes wait while Anki is closed. Needs Anki Desktop with the free AnkiConnect add-on.
 
 <b>Privacy</b>
-No account, no tracking, no server of its own. Only the word you look up goes to the dictionary and translation services you turn on. The Chinese and kanji dictionaries work offline.
+No account, no tracking, no server of its own. Only what you look up goes to the dictionary and translation services you turn on. Text in images is recognised on your computer, and screenshots are never saved or sent.
 
-Dictionaries: Jisho, CC-CEDICT, KANJIDIC2, Wiktionary, Tatoeba, FrequencyWords. Thanks to their authors.
+Dictionaries: Jisho, KANJIDIC2, Wiktionary, Tatoeba, FrequencyWords. Text recognition: manga-ocr, PaddleOCR. Thanks to their authors.
 ```
 
 **Privacy policy:** paste the contents of `PRIVACY.md` (with `https://github.com/mirodn/language-companion` filled in).
@@ -87,44 +84,49 @@ Dictionaries: Jisho, CC-CEDICT, KANJIDIC2, Wiktionary, Tatoeba, FrequencyWords. 
 **Screenshot captions:**
 
 1. `1-japanese-reader.png`: Click any word in the reader: reading, dictionary form and meaning at a glance.
-2. `2-chinese-more.png`: "More" shows every definition to choose from, plus example sentences.
-3. `3-korean-page.png`: Works on any page. Korean verbs lead to their dictionary form.
+2. `3-korean-page.png`: Works on any page. Korean verbs lead to their dictionary form.
+3. To do: a manga page with a speech bubble's panel open (text and translation) and the card.
 
-**Release notes for 0.4.0:**
+**Release notes for 0.5.0:**
 
-> A calmer card: translation, reading and the main definition first, everything else under "More" (M). The sentence translation stays hidden until you click it (T) — or turn that off in the settings. Also new since 0.3: a setup page, an offline Chinese dictionary with pinyin, a kanji breakdown, Korean verb forms (갔어요 → 가다) and quick peek with Shift.
+> Now focused on translating Japanese and Korean. New: text in manga and webtoons (Shonen Jump+ and any site you turn on): click a speech bubble for its text and translation, select words in it. The card updates in place and can be dragged anywhere. Saving to Anki is now optional (off for new users, kept on if you used it). Chinese support was removed.
 
 ## Notes to reviewer
 
 ```
 How to test:
-1. After install a setup page opens. Anki is optional for testing: lookups work without it.
+1. After install a setup page opens. Anki is optional and off by default.
 2. Open https://www3.nhk.or.jp/news/easy/ (or any Japanese page), select a word such as 食べる → a small "文A" button appears → click it for the card.
 3. Toolbar button → "Open in reader" shows the article with clickable words. Hold Shift over a word for a tooltip.
-4. Saving to Anki needs Anki Desktop with the AnkiConnect add-on (code 2055492159); the setup page explains the one config line.
+4. Text in images: open a chapter on https://shonenjumpplus.com, click the toolbar button and turn on "Read text in images". Firefox asks for access to all websites: captureVisibleTab only works without a user gesture with <all_urls>. Outlines appear over speech bubbles; click one for its text.
 
-Data files: data/cedict (CC-CEDICT), data/kanjidic (KANJIDIC2) and data/frequency (FrequencyWords) are public dictionaries, CC BY-SA 4.0, converted to plain text by scripts/build-*.mjs in the source repository (https://github.com/mirodn/language-companion). They are data only, never executed.
+Text in images: the visible tab is captured only on sites the user turned on, processed locally with ONNX models and never stored or sent. The models (PaddleOCR PP-OCRv5 and manga-ocr, Apache-2.0) are data, downloaded once from huggingface.co at pinned revisions and kept in the Cache API. They are not code.
 
-Third-party code: src/vendor/readability/Readability.js is Mozilla Readability 0.6.0, unmodified (Apache-2.0). The two innerHTML lint warnings come from it.
+Third-party code:
+- src/vendor/readability/Readability.js is Mozilla Readability 0.6.0, unmodified (Apache-2.0). The two innerHTML lint warnings come from it.
+- src/vendor/onnxruntime-web/ (ort.wasm.min.mjs, ort-wasm-simd-threaded.mjs, ort-wasm-simd-threaded.wasm) is onnxruntime-web 1.31.1 from npm, unmodified (MIT): https://www.npmjs.com/package/onnxruntime-web/v/1.31.1 (dist/ folder). The dynamic import lint warning comes from it loading its own helper file.
 
-Network: requests go only to the services in host_permissions, with the looked-up word or sentence. AnkiConnect runs on 127.0.0.1:8765. No analytics.
+Data files: data/kanjidic (KANJIDIC2) and data/frequency (FrequencyWords) are public dictionaries, CC BY-SA 4.0, converted to plain text by scripts/build-*.mjs in the source repository (https://github.com/mirodn/language-companion). They are data only, never executed.
+
+Network: requests go only to the services in host_permissions with the looked-up word or sentence, to huggingface.co for the models, and to AnkiConnect on 127.0.0.1:8765 if the user turns Anki on. No analytics.
 ```
 
 ---
 
 ## Smoke test
 
-Run in a fresh profile with the built zip, Anki open:
+Run in a fresh profile with the built zip:
 
-- [ ] Install → setup page opens; ticking Korean shows a Korean deck row; "Check connection" turns green
-- [ ] Japanese page: select 食べました → compact card shows furigana, "JLPT N5", "Base form" link, one definition, "Show translation"
-- [ ] T shows the sentence translation; M shows all definitions, kanji and examples; M again hides them
-- [ ] Settings → "Show the sentence translation right away" → next card shows it without clicking
-- [ ] Enter adds the note; the same word again says "Already in deck"
-- [ ] Quit Anki → card says "Anki is closed" → "Save for later" → reopen Anki → within 2 minutes the note appears
-- [ ] Chinese page: 习惯 shows pinyin xí guàn and CC-CEDICT definitions
+- [ ] Install → setup page opens; "Save words to Anki" is off; ticking Korean adds a Korean sample
+- [ ] Japanese page: select 食べました → card shows furigana, "JLPT N5", "Base form" link, one definition, the sentence and its translation; no deck menu or Add button
+- [ ] M shows all definitions, kanji and examples as a plain list; M again hides them
+- [ ] Select another word while the card is open → the same card updates; click empty space → it closes
+- [ ] Drag the card by its header into a corner, scroll, select more words → they appear in the corner; double-click the header → back next to the word
 - [ ] Korean page: 갔어요 → "Base form: 가다"
+- [ ] Kanji-only text (学校) is looked up as Japanese; English text: no lookup button appears
 - [ ] Toolbar → Open in reader on a news article; click words; Shift peek
 - [ ] YouTube with Japanese subtitles: click a subtitle word → video pauses → card → close → video resumes
-- [ ] English text: no lookup button appears
-- [ ] Dark mode (system) looks right on the card, reader, setup and settings pages
+- [ ] Shonen Jump+ chapter: toolbar switch → permission → "Getting text recognition ready…" → outlines on bubbles; click one → panel with text and translation; select a word → card; clicking a bubble doesn't turn the page; turning the page clears and rescans
+- [ ] Settings → turn on "Save words to Anki" (Anki open) → deck menus appear; card gets deck menu and Add to Anki; Enter adds; same word again says "Already in deck"
+- [ ] With Anki on, quit Anki → card says "Anki is closed" → "Save for later" → reopen Anki → within 2 minutes the note appears
+- [ ] Dark mode (system) looks right on the card, the bubble panel, reader, setup and settings pages

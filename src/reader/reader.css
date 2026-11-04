@@ -124,12 +124,6 @@ header:lang(ko) {
   word-break: keep-all;
 }
 
-article:lang(zh),
-header:lang(zh) {
-  font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
-  line-height: 2;
-}
-
 article a {
   color: var(--accent);
 }
