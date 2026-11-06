@@ -9,6 +9,13 @@
 
   // Wait this long after the last page event before scanning, so page-turn animations are done.
   const SETTLE_MS = 600;
+  // A manga page is a large picture on screen. Thumbnails, buttons and the site around it aren't read.
+  const MIN_PICTURE_SIDE = 250;
+  const MIN_PICTURES_SHARE = 0.15;
+  // Links and buttons on a page stay clickable. Larger ones are a viewer's areas for turning pages.
+  const MAX_LINK_SHARE = 0.15;
+  // How often to look for a page: viewers draw theirs after loading, without any page event.
+  const WATCH_MS = 1000;
   // Show a note only when a scan is slow, which is mostly the first model download.
   const STATUS_DELAY_MS = 800;
   // How long the bubbles' outlines show after a scan, so it's clear where the text is.
@@ -26,6 +33,7 @@
     language-companion-bubble { display: block; position: fixed; pointer-events: auto; cursor: pointer; border-radius: 6px;
       outline: 2px solid transparent; outline-offset: 1px; transition: outline-color 500ms, background-color 120ms; }
     language-companion-text-layer[data-flash] language-companion-bubble { outline-color: rgba(47, 111, 237, 0.4); }
+    language-companion-text-layer[data-through] language-companion-bubble { pointer-events: none; }
     language-companion-bubble:hover, language-companion-bubble[data-open] {
       background: rgba(47, 111, 237, 0.08); outline-color: rgba(47, 111, 237, 0.65); transition-duration: 120ms; }
     @media (prefers-reduced-motion: reduce) { language-companion-bubble { transition: none; } }
@@ -71,6 +79,9 @@
   let flashTimer = null;
   let scanning = false;
   let rescan = false;
+  // Whether a manga page is on screen.
+  let reading = false;
+  let watchTimer = null;
 
   async function send(type, payload = {}) {
     const response = await browser.runtime.sendMessage({ type, ...payload });
@@ -126,7 +137,7 @@
       const { x, y, width, height } = bubble.box;
       bubble.node = document.createElement("language-companion-bubble");
       bubble.node.setAttribute("style", `left: ${x}px; top: ${y}px; width: ${width}px; height: ${height}px;`);
-      bubble.node.title = "Read and translate";
+      bubble.node.title = "Read and translate (hold Ctrl or ⌘ to click the page)";
       layer.append(bubble.node);
       if (texts.has(bubble.key)) setText(bubble, texts.get(bubble.key));
     }
@@ -283,6 +294,63 @@
 
   // --- Scanning ----------------------------------------------------------------------
 
+  // Elements that show a picture, including viewers that use a background image.
+  function pictures() {
+    const found = new Set(document.querySelectorAll("img, canvas, svg, iframe"));
+    for (const x of [0.25, 0.5, 0.75]) {
+      for (const y of [0.25, 0.5, 0.75]) {
+        for (const node of document.elementsFromPoint(window.innerWidth * x, window.innerHeight * y)) {
+          if (node !== document.body && node !== document.documentElement && getComputedStyle(node).backgroundImage.startsWith("url(")) found.add(node);
+        }
+      }
+    }
+    return found;
+  }
+
+  // The visible parts of the large pictures on screen, or nothing if they don't add up to a manga page.
+  function pageRects() {
+    const rects = [];
+    let area = 0;
+    for (const node of pictures()) {
+      const box = node.getBoundingClientRect();
+      if (box.width < MIN_PICTURE_SIDE || box.height < MIN_PICTURE_SIDE) continue;
+      const left = Math.max(0, box.left);
+      const top = Math.max(0, box.top);
+      const right = Math.min(window.innerWidth, box.right);
+      const bottom = Math.min(window.innerHeight, box.bottom);
+      if (right <= left || bottom <= top) continue;
+      rects.push({ left, top, right, bottom });
+      area += (right - left) * (bottom - top);
+    }
+    return area >= MIN_PICTURES_SHARE * window.innerWidth * window.innerHeight ? rects : [];
+  }
+
+  function onPage({ box }, rects) {
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    return rects.some((rect) => x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom);
+  }
+
+  function onLink({ box }) {
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    return document.elementsFromPoint(x, y).some((node) => {
+      const link = node.closest(LC.selection.CLICKABLE);
+      if (!link) return false;
+      const { width, height } = link.getBoundingClientRect();
+      return width * height < MAX_LINK_SHARE * window.innerWidth * window.innerHeight;
+    });
+  }
+
+  // Starts reading when a page appears, and stops when the user leaves it for the rest of the site.
+  function watchPage() {
+    if (!active || document.hidden) return;
+    const shown = pageRects().length > 0;
+    if (shown === reading) return;
+    reading = shown;
+    pageChanged();
+  }
+
   function pageChanged() {
     generation += 1;
     clearBubbles();
@@ -299,6 +367,9 @@
 
   async function scan() {
     if (!active || document.hidden) return;
+    const rects = pageRects();
+    reading = rects.length > 0;
+    if (!reading) return;
     if (scanning) {
       rescan = true;
       return;
@@ -319,7 +390,7 @@
       captureId = result.captureId;
       ensureLayer();
       layer.lang = lang;
-      bubbles = groupBubbles(result.lines);
+      bubbles = groupBubbles(result.lines.filter((line) => onPage(line, rects) && !onLink(line)));
       showBubbles();
       readAll(scanned);
     } catch (error) {
@@ -364,6 +435,14 @@
     );
   }
 
+  // Bubbles sit on top of the page. With Ctrl or Cmd held, clicks go to the page instead.
+  function clickThrough(event) {
+    if (event.isTrusted && (event.key === "Control" || event.key === "Meta")) layer?.toggleAttribute("data-through", event.type === "keydown");
+  }
+  window.addEventListener("keydown", clickThrough, true);
+  window.addEventListener("keyup", clickThrough, true);
+  window.addEventListener("blur", () => layer?.removeAttribute("data-through"));
+
   // Anything that may change what's on screen. Events on the extension's own UI don't count.
   function onPageEvent(event) {
     if (!event.isTrusted || !active || inLayer(event.target) || event.target === notes || LC.companion.contains(event.target)) return;
@@ -372,9 +451,10 @@
   }
   for (const type of ["wheel", "keydown", "click", "touchend"]) window.addEventListener(type, onPageEvent, true);
   document.addEventListener("scroll", onPageEvent, true);
-  window.addEventListener("resize", () => active && pageChanged());
-  document.addEventListener("fullscreenchange", () => active && pageChanged());
-  document.addEventListener("visibilitychange", () => active && !document.hidden && pageChanged());
+  // A page can fire these itself too, which must not start a scan.
+  window.addEventListener("resize", (event) => event.isTrusted && active && pageChanged());
+  document.addEventListener("fullscreenchange", (event) => event.isTrusted && active && pageChanged());
+  document.addEventListener("visibilitychange", (event) => event.isTrusted && active && !document.hidden && pageChanged());
 
   // --- Setup -------------------------------------------------------------------------
 
@@ -383,8 +463,12 @@
     const enabled = Boolean(settings && LC.companion.enabledHere() && siteEnabled(settings));
     if (enabled === active) return;
     active = enabled;
-    if (active) pageChanged();
-    else {
+    clearInterval(watchTimer);
+    reading = false;
+    if (active) {
+      watchTimer = setInterval(watchPage, WATCH_MS);
+      pageChanged();
+    } else {
       generation += 1;
       layer?.remove();
       notes?.remove();

@@ -8,6 +8,8 @@
   const GAP = 8;
   // How far the pointer has to move before pressing the header becomes a drag.
   const DRAG_THRESHOLD = 4;
+  // How long the lookup button stays next to a selection.
+  const TRIGGER_MS = 4000;
 
   // Minimal element builder: h("div", { class: "x", onClick }, child, "text").
   function h(tag, props = {}, ...children) {
@@ -96,6 +98,8 @@
           // Keep the page selection when clicking the button.
           onMousedown: (event) => event.preventDefault(),
           onClick: () => this.handlers.onTrigger(),
+          onMouseenter: () => clearTimeout(this.triggerTimer),
+          onMouseleave: () => this.hideTriggerSoon(),
         },
         "文A",
       );
@@ -187,15 +191,24 @@
       const top = local.bottom + 4;
       this.trigger.style.left = `${left}px`;
       this.trigger.style.top = `${top}px`;
+      this.hideTriggerSoon();
+    }
+
+    // It may sit on top of something the user wants to click next.
+    hideTriggerSoon() {
+      clearTimeout(this.triggerTimer);
+      this.triggerTimer = setTimeout(() => this.hideTrigger(), TRIGGER_MS);
     }
 
     hideTrigger() {
+      clearTimeout(this.triggerTimer);
       this.trigger.hidden = true;
     }
 
     // --- Card state ------------------------------------------------------------
 
-    // context: optional { pageUrl, pageTitle, tags } overriding the current page, e.g. a video timestamp.
+    // context: optional { pageUrl, pageTitle, tags } overriding the current page, e.g. a video
+    // timestamp, and link: the http(s) link the word is part of, if clicking it looked it up instead.
     // fromSentence: the word was picked in the speech bubble view, which stays reachable via Back
     // and keeps the card where it is.
     open(rect, word, context = {}, { fromSentence = false } = {}) {
@@ -560,7 +573,14 @@
         this.renderSentence(),
         this.expanded && [this.renderKanji(), this.renderExamples(), this.renderWarnings()],
         this.renderMoreToggle(),
+        this.renderLink(),
       ];
+    }
+
+    renderLink() {
+      const { link } = this.state.context;
+      if (!/^https?:/i.test(link ?? "")) return null;
+      return h("a", { class: "open-link", href: link, target: "_blank", rel: "noopener noreferrer" }, "Open link ↗");
     }
 
     // Keyboard hints for the card without Anki, which has no other footer.

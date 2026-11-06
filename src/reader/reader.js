@@ -166,7 +166,8 @@
     if (!extend) anchorWord = word;
     LC.companion.lookup({
       ...LC.selection.fromRange(range),
-      context: { pageUrl: article.url, pageTitle: article.title, tags: ["lc::reader"] },
+      // Clicking a word looks it up, so the card offers the link it is part of.
+      context: { pageUrl: article.url, pageTitle: article.title, tags: ["lc::reader"], link: word.closest("a[href]")?.href },
     });
   }
 

@@ -15,6 +15,9 @@
   // selections better than the page selection does (sentence, context).
   let offered = null;
   const closeListeners = [];
+  // Where the last press started. Below this distance it was a click, not a selection.
+  const MIN_DRAG_PX = 4;
+  let press = null;
 
   async function send(type, payload = {}) {
     const response = await browser.runtime.sendMessage({ type, ...payload });
@@ -202,15 +205,16 @@
 
   // Shows the lookup button next to a selection, or opens the card right away, as set in the
   // settings. info: { text, sentence, rect, pageLang, context? } (see selection.js), or null.
-  function offerSelection(info) {
+  // onLink: the selection started on a link or button, so the card doesn't open by itself.
+  function offerSelection(info, { onLink = false } = {}) {
     offered = null;
     if (!info || !inMyLanguages(info.text, info.sentence)) {
       ui?.hideTrigger();
       return false;
     }
     offered = info;
-    if (settings.triggerMode === "instant") runLookup(info);
-    else if (settings.triggerMode === "icon") getUI().then((card) => card.showTrigger(info.rect));
+    if (settings.triggerMode === "instant" && !onLink) runLookup(info);
+    else if (settings.triggerMode !== "shortcut") getUI().then((card) => card.showTrigger(info.rect));
     return true;
   }
 
@@ -222,12 +226,16 @@
     if (!event.isTrusted || !enabledHere() || ui?.contains(event.target) || event.button !== 0) return;
     const pressed = pressedAt;
     pressedAt = null;
+    // A plain click is meant for the page, even with text still selected. Double and triple clicks
+    // select a word or a line.
+    const selecting = !press || event.detail >= 2 || Math.hypot(event.clientX - press.x, event.clientY - press.y) >= MIN_DRAG_PX;
+    const onLink = Boolean(press?.target.closest?.(selection.CLICKABLE));
     // The selection is only final after the mouseup has been processed, and clicks on words in
     // the reader or in subtitles start their lookup in the click that follows.
     setTimeout(() => {
       // While a card is being edited, text on the page may be selected to copy into it.
       if (ui?.isEditing) return;
-      const offered = offerSelection(selection.current(settings.maxSelectionLength));
+      const offered = selecting && offerSelection(selection.current(settings.maxSelectionLength), { onLink });
       if (!offered && pressed !== null && pressed === lookupId && !ui?.isPinned) ui?.close();
     }, 0);
   });
@@ -235,7 +243,9 @@
   document.addEventListener(
     "mousedown",
     (event) => {
-      if (!event.isTrusted || !ui || ui.contains(event.target) || ui.isEditing) return;
+      if (!event.isTrusted) return;
+      press = { x: event.clientX, y: event.clientY, target: event.target };
+      if (!ui || ui.contains(event.target) || ui.isEditing) return;
       ui.hideTrigger();
       if (event.button === 0) pressedAt = lookupId;
       else if (!ui.isPinned) ui.close();

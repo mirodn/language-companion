@@ -40,6 +40,8 @@ const BUBBLE_MARGIN = 0.08;
 // 0–255) shows the same page, so the previous lines are still valid.
 const SAME_PAGE = 2;
 const THUMB_SIZE = 32;
+// Without any Japanese or Korean it's not a speech bubble, but a button or part of the drawing.
+const READABLE = /[぀-ヿ㐀-鿿가-힯]/;
 
 let ortModule = null;
 const engines = new Map();
@@ -240,14 +242,18 @@ export async function read({ captureId, ids }, sender) {
   if (!lines.length) return { text: "" };
   if (capture.lang === "ja") {
     const box = bubbleBox(lines.map((line) => line.pixels), capture.image);
-    return { text: await serial(async () => (await mangaOcr()).read(capture.image, box)) };
+    return readable(await serial(async () => (await mangaOcr()).read(capture.image, box)));
   }
   const read = await serial(async () => (await paddle(capture.lang)).read(
     capture.image,
     lines.map((line) => ({ box: line.pixels, vertical: line.vertical })),
   ));
   // Lines come in the caller's reading order; Korean separates them with spaces.
-  return { text: read.map((line) => line.text).join(capture.lang === "ko" ? " " : "") };
+  return readable(read.map((line) => line.text).join(capture.lang === "ko" ? " " : ""));
+}
+
+function readable(text) {
+  return { text: READABLE.test(text) ? text : "" };
 }
 
 export function forgetTab(tabId) {

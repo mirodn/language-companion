@@ -10,6 +10,10 @@ Language Companion now focuses on understanding Japanese and Korean. Translating
 
 - Text in images: on manga and webtoon sites, the extension finds the speech bubbles in the pages. Click one and the card shows its text and translation; click a word or drag across words to look them up, with the bubble as the sentence, and go back to the bubble with ← (or Backspace). Japanese is read with manga-ocr, which was trained on manga; Korean with PaddleOCR. On by default for Shonen Jump+; other sites have a switch in the toolbar menu. It runs on your computer and needs a one-time permission and a one-time download (about 120 MB for Japanese, 20 MB for Korean), with its progress shown in the corner
 
+- Text in images only runs while a manga page is on screen, and only reads text inside it: not on a site's other pages, and not its buttons, arrows, covers or thumbnails
+- Links stay links: speech bubbles no longer cover links and buttons on a manga page, and with Ctrl or ⌘ held, clicks go past the bubbles to the page. In the reader, the card has an **Open link** button for words in a link
+- A plain click never brings up the translator, even with text still selected. The 文A button disappears after 4 seconds, and with "Open the card immediately", a selection that starts on a link shows the button instead of the card
+
 ### Lookup card
 
 - Redesigned: a larger headword with furigana, the language and level as small badges, the translation first, and the sentence in its own block. Icons replace the emoji, the card fades in, and copy buttons sit next to translations
@@ -31,7 +35,7 @@ Language Companion now focuses on understanding Japanese and Korean. Translating
 
 ### Security
 
-- Web pages can no longer drive the extension with made-up events: a page script could select text, open the card and press Enter to add notes to Anki, or keep translators (and your DeepL quota) busy. Only real clicks, keys and selections count now
+- Web pages can no longer drive the extension with made-up events: a page script could select text, open the card and press Enter to add notes to Anki, or keep translators (and your DeepL quota) busy, or keep text recognition running. Only real clicks, keys, selections and page events count now
 - Text in images only captures the screen for the visible tab that asks for it. Before, a manga tab in the background could get the text of the tab you were looking at
 - The background checks who sends each message: web pages only get lookups, the card's Anki actions and text in images; opening the reader, setting up Anki and changing saved words only work from the extension's own pages. Lookups are limited to 1000 characters
 - Downloaded text recognition models are checked against their SHA-256 before they're stored or run. Older downloads, made without the check, are deleted on update and downloaded again when needed

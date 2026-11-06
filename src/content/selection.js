@@ -68,5 +68,8 @@
       .trim();
   }
 
-  LC.selection = { current, fromRange };
+  // What a click on the page is meant for, so the extension stays out of its way.
+  const CLICKABLE = "a[href], button, [role=button]";
+
+  LC.selection = { current, fromRange, CLICKABLE };
 })();
