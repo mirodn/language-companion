@@ -37,14 +37,14 @@ If you use [Anki](https://apps.ankiweb.net/), you can also save words as flashca
 **Translate what you read**
 
 - A small card next to your selection: translation, reading and the main definition at a glance, and the translation of the whole sentence. **More** shows all definitions, the kanji and example sentences
-- Select the next word and the same card updates. Drag the card by its header to park it anywhere on screen while you read
+- Select the next word and the same card updates. Pin the card (or drag it anywhere) and it stays put and open while you read and turn pages
 - Furigana for Japanese, audio or text-to-speech for everything
 - Conjugated words lead to their dictionary form: 食べました → 食べる, 갔어요 → 가다, 학교에 → 학교
 - JLPT level or word frequency ("Top 2k") shows what is worth learning first
 
 **Read and watch**
 
-- **Manga and webtoons:** on sites like Shonen Jump+, click a speech bubble to see its text and translation, then select any word or phrase in it to look it up. It runs on your computer. Turn it on for a site in the toolbar menu
+- **Manga and webtoons:** on sites like Shonen Jump+, click a speech bubble and the card shows its text and translation. Click a word or drag across words to look them up, then go back to the bubble. It runs on your computer. Turn it on for a site in the toolbar menu
 - **Reader:** opens any article in a calm view where every word is clickable. This helps most with Japanese, which has no spaces between words
 - **Quick peek:** hold <kbd>Shift</kbd> over a word in the reader or in YouTube subtitles to see its reading and meaning
 - **YouTube:** click a word in the subtitles. The video pauses, and the subtitle line becomes the card's sentence
@@ -105,12 +105,13 @@ Select a word or a sentence and click the small **文A** button that appears. To
 | <kbd>M</kbd> | More or less: all definitions, kanji, examples |
 | <kbd>T</kbd> | Show the sentence translation, if you chose to hide it |
 | <kbd>B</kbd> | Look up the dictionary form instead |
+| <kbd>Backspace</kbd> | Back to the speech bubble (manga) |
 | <kbd>P</kbd> | Play the pronunciation |
 | <kbd>Esc</kbd> | Close |
 
 The global shortcut can be changed in `about:addons` → ⚙ → **Manage Extension Shortcuts**. In the settings you can choose how the card opens (button, right away, or only by shortcut), turn sources on or off, and disable the extension on single sites.
 
-**Manga and webtoons:** Shonen Jump+ is on by default; for other sites, open the toolbar menu there and turn on "Read text in images". Firefox asks once for permission to access all websites, which it requires before an extension may capture the visible part of a tab. The first time, the text recognition models are downloaded: about 120 MB for Japanese, 20 MB for Korean. After that, outlines appear over the speech bubbles when you point at them. Click one to see its text and translation, and select words in it for the card. Each bubble takes about a second to read; reading starts as soon as a page appears, so the next bubbles are usually ready.
+**Manga and webtoons:** Shonen Jump+ is on by default; for other sites, open the toolbar menu there and turn on "Read text in images". Firefox asks once for permission to access all websites, which it requires before an extension may capture the visible part of a tab. The first time, the text recognition models are downloaded (about 120 MB for Japanese, 20 MB for Korean), with the progress in the page's corner. After each page turn, the speech bubbles light up briefly; later they show an outline when you point at them. Click one and the card shows its text and translation. Click a word, drag across several, or Shift+click to extend, and the card shows that word, with ← (or <kbd>Backspace</kbd>) back to the bubble. Downloaded models and sites can be managed in the settings under "Text in images". Each bubble takes about a second to read; reading starts as soon as a page appears, so the next bubbles are usually ready.
 
 **YouTube:** turn on subtitles in the player (any track, including auto-generated ones) and click a word. The card works in fullscreen, and the video resumes when it closes.
 
@@ -154,7 +155,7 @@ Notes are tagged with the language (`lc::ja`) and frequency (`lc::freq::jlpt-n5`
 
 ## Privacy
 
-There is no account, no analytics and no server of our own. Only what you look up, and optionally its sentence, goes to the dictionary and translation services you turn on. Text in images is recognised on your computer; screenshots are never saved or sent. The kanji dictionary and the frequency lists are built in and work offline. Settings, the lookup cache and your word history stay in Firefox. See [PRIVACY.md](PRIVACY.md) for each service and each permission.
+There is no account, no analytics and no server of our own. Only what you look up, and optionally its sentence, goes to the dictionary and translation services you turn on. Text in images is recognised on your computer; screenshots are never saved or sent. The kanji dictionary and the frequency lists are built in and work offline. Settings, the lookup cache and your word history stay in Firefox. See [PRIVACY.md](PRIVACY.md) for each service and each permission, and [SECURITY.md](SECURITY.md) for how the extension guards against hostile pages and how to report a vulnerability.
 
 ## Development
 

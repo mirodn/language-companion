@@ -8,18 +8,35 @@ Language Companion now focuses on understanding Japanese and Korean. Translating
 
 ### Reading and watching
 
-- Text in images: on manga and webtoon sites, the extension finds the speech bubbles in the pages. Click one to see its text and its translation next to it, then select words or whole sentences to look them up, with the bubble as the card's sentence. Japanese is read with manga-ocr, which was trained on manga; Korean with PaddleOCR. On by default for Shonen Jump+; other sites have a switch in the toolbar menu. It runs on your computer and needs a one-time permission and a one-time download (about 120 MB for Japanese, 20 MB for Korean)
+- Text in images: on manga and webtoon sites, the extension finds the speech bubbles in the pages. Click one and the card shows its text and translation; click a word or drag across words to look them up, with the bubble as the sentence, and go back to the bubble with ← (or Backspace). Japanese is read with manga-ocr, which was trained on manga; Korean with PaddleOCR. On by default for Shonen Jump+; other sites have a switch in the toolbar menu. It runs on your computer and needs a one-time permission and a one-time download (about 120 MB for Japanese, 20 MB for Korean), with its progress shown in the corner
 
 ### Lookup card
 
+- Redesigned: a larger headword with furigana, the language and level as small badges, the translation first, and the sentence in its own block. Icons replace the emoji, the card fades in, and copy buttons sit next to translations
+- While it looks up, the card shows placeholders instead of "Looking up…"; if a lookup fails, **Try again** repeats it
+- Without Anki, a line at the bottom shows the keys (M more, P listen, Esc close)
 - Selecting another word while the card is open shows that word in the same card, instead of closing it first. A plain click elsewhere still closes it, and while you edit a card, clicks on the page leave it alone
-- Drag the card by its header to move it. It stays at that spot on screen for the next words until you close it. Double-click the header to put it back next to the selection
+- Pin the card with the pin button in its header, or drag it by the header: it stays at that spot on screen, shows the next words there, and stays open when you click the page or turn pages, until you close it. Click the pin again (or double-click the header) to let it follow the text
 - The sentence translation is shown right away. "Show the sentence translation right away" in the settings turns this off again
+
+### Toolbar menu and settings
+
+- The toolbar menu shows switches for the current site: translating there, reading text in images, and on YouTube the subtitles. A switch at the top pauses the extension everywhere
+- The settings have a section list on the left, a "Saved" notice, and a new "Text in images" section with the permission, the list of sites and the downloaded models (with their size and a Delete button)
 
 ### Anki
 
 - Saving to Anki is optional and off for new installs: the card then only translates, without a deck menu, Edit or Add to Anki, and the toolbar menu leaves out the Anki status and stats. Turn it on under Settings → Anki or on the setup page. If you already saved words or chose decks, it stays on
 - The setup page starts with your languages and a place to try a lookup; connecting Anki is an optional last section
+
+### Security
+
+- Web pages can no longer drive the extension with made-up events: a page script could select text, open the card and press Enter to add notes to Anki, or keep translators (and your DeepL quota) busy. Only real clicks, keys and selections count now
+- Text in images only captures the screen for the visible tab that asks for it. Before, a manga tab in the background could get the text of the tab you were looking at
+- The background checks who sends each message: web pages only get lookups, the card's Anki actions and text in images; opening the reader, setting up Anki and changing saved words only work from the extension's own pages. Lookups are limited to 1000 characters
+- Downloaded text recognition models are checked against their SHA-256 before they're stored or run. Older downloads, made without the check, are deleted on update and downloaded again when needed
+- Anki notes only link to http(s) pages and only save audio from https URLs
+- Stricter rules for the extension's own pages (no plugins, `<base>` or form submissions), and a [security policy](SECURITY.md) with how to report a vulnerability
 
 ### Removed
 

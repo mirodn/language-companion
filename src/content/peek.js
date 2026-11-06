@@ -104,6 +104,8 @@
   document.addEventListener(
     "mouseover",
     (event) => {
+      // Ignores events a page script made up (see content.js).
+      if (!event.isTrusted) return;
       hovered = event.target instanceof Element ? event.target.closest(WORD_SELECTOR) : null;
       shift = event.shiftKey;
       update();
@@ -114,7 +116,7 @@
   window.addEventListener(
     "keydown",
     (event) => {
-      if (event.key !== "Shift" || shift) return;
+      if (!event.isTrusted || event.key !== "Shift" || shift) return;
       shift = true;
       update();
     },

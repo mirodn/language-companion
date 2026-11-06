@@ -12,19 +12,29 @@
     <script type="module" src="options.js"></script>
   </head>
   <body>
+    <div class="layout">
+      <nav class="toc" aria-label="Sections">
+        <a href="#languages">Languages</a>
+        <a href="#translation">Translation</a>
+        <a href="#images">Text in images</a>
+        <a href="#youtube">YouTube</a>
+        <a href="#behavior">Behavior</a>
+        <a href="#anki">Anki</a>
+        <a href="#shortcuts">Shortcuts</a>
+      </nav>
     <main>
       <header>
         <h1>Language Companion</h1>
-        <p class="muted">Changes are saved automatically. <span id="saved" class="success" hidden>Saved ✓</span></p>
+        <p class="muted">Changes are saved automatically.</p>
       </header>
 
-      <section>
+      <section id="languages">
         <h2>Languages</h2>
         <p class="muted">The languages you learn. Lookups are offered only for text in these languages, and words are translated into English. With Anki on, each language saves to its own deck.</p>
         <div id="language-rows"></div>
       </section>
 
-      <section>
+      <section id="translation">
         <h2>Translation &amp; dictionaries</h2>
         <div class="row">
           <label for="translator">Translator</label>
@@ -56,19 +66,19 @@
         <div class="row">
           <span></span>
           <div>
-            <label class="choice"><input type="checkbox" data-setting="translateSentence" /> Also translate the surrounding sentence</label>
-            <label class="choice"><input type="checkbox" data-setting="showSentenceTranslation" /> Show the sentence translation right away <span class="muted">(otherwise click “Show translation” or press T, so you can try the sentence first)</span></label>
+            <label class="choice"><input type="checkbox" class="switch" data-setting="translateSentence" /> <span>Also translate the surrounding sentence</span></label>
+            <label class="choice"><input type="checkbox" class="switch" data-setting="showSentenceTranslation" /> <span>Show the sentence translation right away <span class="muted">(otherwise click “Show translation” or press T, so you can try the sentence first)</span></span></label>
           </div>
         </div>
         <div class="row">
           <span>Sources</span>
           <div>
-            <label class="choice"><input type="checkbox" data-setting="providers.freedictionary" /> Free Dictionary <span class="muted">(English: IPA, audio, definitions)</span></label>
-            <label class="choice"><input type="checkbox" data-setting="providers.jisho" /> Jisho <span class="muted">(Japanese: readings for furigana, definitions)</span></label>
-            <label class="choice"><input type="checkbox" data-setting="providers.kanjidic" /> KANJIDIC <span class="muted">(Japanese: meaning of each kanji; built in, works offline)</span></label>
-            <label class="choice"><input type="checkbox" data-setting="providers.wiktionary" /> Wiktionary <span class="muted">(definitions in English, most languages)</span></label>
-            <label class="choice"><input type="checkbox" data-setting="providers.tatoeba" /> Tatoeba <span class="muted">(example sentences)</span></label>
-            <label class="choice"><input type="checkbox" data-setting="providers.frequency" /> Word frequency <span class="muted">("Top 2k" badge, from movie subtitles; JLPT level for Japanese)</span></label>
+            <label class="choice"><input type="checkbox" class="switch" data-setting="providers.freedictionary" /> <span>Free Dictionary <span class="muted">(English: IPA, audio, definitions)</span></span></label>
+            <label class="choice"><input type="checkbox" class="switch" data-setting="providers.jisho" /> <span>Jisho <span class="muted">(Japanese: readings for furigana, definitions)</span></span></label>
+            <label class="choice"><input type="checkbox" class="switch" data-setting="providers.kanjidic" /> <span>KANJIDIC <span class="muted">(Japanese: meaning of each kanji; built in, works offline)</span></span></label>
+            <label class="choice"><input type="checkbox" class="switch" data-setting="providers.wiktionary" /> <span>Wiktionary <span class="muted">(definitions in English, most languages)</span></span></label>
+            <label class="choice"><input type="checkbox" class="switch" data-setting="providers.tatoeba" /> <span>Tatoeba <span class="muted">(example sentences)</span></span></label>
+            <label class="choice"><input type="checkbox" class="switch" data-setting="providers.frequency" /> <span>Word frequency <span class="muted">("Top 2k" badge, from movie subtitles; JLPT level for Japanese)</span></span></label>
           </div>
         </div>
         <div class="row">
@@ -88,11 +98,83 @@
         </div>
       </section>
 
-      <section>
+      <section id="images">
+        <h2>Text in images</h2>
+        <p class="muted">On manga and webtoon sites, click a speech bubble to read and translate its text. The text is recognised on your computer.</p>
+        <div class="row">
+          <span>Permission</span>
+          <div class="inline">
+            <span id="images-permission" class="muted"></span>
+            <button type="button" id="images-grant" hidden>Allow</button>
+          </div>
+        </div>
+        <div class="row">
+          <span>Sites</span>
+          <div>
+            <ul id="images-sites" class="site-list"></ul>
+            <form id="images-add" class="inline">
+              <input type="text" id="images-new-site" placeholder="example.com" aria-label="Add a site" />
+              <button type="submit">Add site</button>
+            </form>
+          </div>
+        </div>
+        <div class="row">
+          <span>Downloaded models</span>
+          <div class="inline">
+            <span id="images-models" class="muted"></span>
+            <button type="button" id="images-delete-models" hidden>Delete</button>
+          </div>
+        </div>
+        <p class="muted small">Firefox asks for access to all websites because extensions may only capture the visible part of a tab without a click with that permission. Screenshots are taken only on the sites above, and never saved or sent.</p>
+      </section>
+
+      <section id="youtube">
+        <h2>YouTube</h2>
+        <p class="muted">Turn on subtitles in the player, then click any word. Shift+click a second word to look up a phrase.</p>
+        <div class="row">
+          <span></span>
+          <div>
+            <label class="choice"><input type="checkbox" class="switch" data-setting="youtubeEnabled" /> <span>Make subtitles clickable</span></label>
+            <label class="choice"><input type="checkbox" class="switch" data-setting="youtubePauseOnClick" /> <span>Pause the video when I click a word</span></label>
+            <label class="choice"><input type="checkbox" class="switch" data-setting="youtubeResumeOnClose" /> <span>Resume playback when the card closes</span></label>
+          </div>
+        </div>
+        <p class="muted small">Saved cards use the subtitle line as the sentence and link to the video at that moment.</p>
+      </section>
+
+      <section id="behavior">
+        <h2>Behavior</h2>
+        <div class="row">
+          <label for="triggerMode">When text is selected</label>
+          <select id="triggerMode" data-setting="triggerMode">
+            <option value="icon">Show a small button</option>
+            <option value="instant">Open the card immediately</option>
+            <option value="shortcut">Do nothing (use shortcut or context menu)</option>
+          </select>
+        </div>
+        <div class="row">
+          <label for="theme">Theme</label>
+          <select id="theme" data-setting="theme">
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </div>
+        <div class="row">
+          <label for="maxSelectionLength">Max. selection length</label>
+          <input type="number" id="maxSelectionLength" data-setting="maxSelectionLength" min="10" max="1000" />
+        </div>
+        <div class="row">
+          <label for="disabledSites">Disabled on these sites <span class="muted">(one hostname per line)</span></label>
+          <textarea id="disabledSites" data-setting="disabledSites" rows="4" placeholder="mail.example.com"></textarea>
+        </div>
+      </section>
+
+      <section id="anki">
         <h2>Anki</h2>
         <div class="row">
           <span></span>
-          <label class="choice"><input type="checkbox" data-setting="ankiEnabled" /> Save words to Anki <span class="muted">(optional: adds a deck and an “Add to Anki” button to the card)</span></label>
+          <label class="choice"><input type="checkbox" class="switch" data-setting="ankiEnabled" /> <span>Save words to Anki <span class="muted">(optional: adds a deck and an “Add to Anki” button to the card)</span></span></label>
         </div>
         <div id="anki-settings">
         <p class="muted">
@@ -149,64 +231,23 @@
         </div>
         <div class="row">
           <span></span>
-          <label class="choice"><input type="checkbox" data-setting="saveAudio" /> Save pronunciation audio when available</label>
+          <label class="choice"><input type="checkbox" class="switch" data-setting="saveAudio" /> <span>Save pronunciation audio when available</span></label>
         </div>
         </div>
       </section>
 
-      <section>
-        <h2>YouTube</h2>
-        <p class="muted">Turn on subtitles in the player, then click any word. Shift+click a second word to look up a phrase.</p>
-        <div class="row">
-          <span></span>
-          <div>
-            <label class="choice"><input type="checkbox" data-setting="youtubeEnabled" /> Make subtitles clickable</label>
-            <label class="choice"><input type="checkbox" data-setting="youtubePauseOnClick" /> Pause the video when I click a word</label>
-            <label class="choice"><input type="checkbox" data-setting="youtubeResumeOnClose" /> Resume playback when the card closes</label>
-          </div>
-        </div>
-        <p class="muted small">Saved cards use the subtitle line as the sentence and link to the video at that moment.</p>
-      </section>
-
-      <section>
-        <h2>Behavior</h2>
-        <div class="row">
-          <label for="triggerMode">When text is selected</label>
-          <select id="triggerMode" data-setting="triggerMode">
-            <option value="icon">Show a small button</option>
-            <option value="instant">Open the card immediately</option>
-            <option value="shortcut">Do nothing (use shortcut or context menu)</option>
-          </select>
-        </div>
-        <div class="row">
-          <label for="theme">Theme</label>
-          <select id="theme" data-setting="theme">
-            <option value="system">System</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </div>
-        <div class="row">
-          <label for="maxSelectionLength">Max. selection length</label>
-          <input type="number" id="maxSelectionLength" data-setting="maxSelectionLength" min="10" max="1000" />
-        </div>
-        <div class="row">
-          <label for="disabledSites">Disabled on these sites <span class="muted">(one hostname per line)</span></label>
-          <textarea id="disabledSites" data-setting="disabledSites" rows="4" placeholder="mail.example.com"></textarea>
-        </div>
-      </section>
-
-      <section>
+      <section id="shortcuts">
         <h2>Keyboard shortcuts</h2>
         <table class="shortcuts">
           <tbody>
             <tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd></td><td>Look up the selection</td></tr>
-            <tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd></td><td>Look up and add to Anki right away (with Anki on)</td></tr>
-            <tr><td><kbd>Enter</kbd></td><td>Add to Anki (card open, with Anki on)</td></tr>
+            <tr class="anki-only"><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd></td><td>Look up and add to Anki right away (with Anki on)</td></tr>
+            <tr class="anki-only"><td><kbd>Enter</kbd></td><td>Add to Anki (card open, with Anki on)</td></tr>
             <tr><td><kbd>P</kbd></td><td>Play pronunciation (card open)</td></tr>
-            <tr><td><kbd>E</kbd></td><td>Edit fields (card open)</td></tr>
+            <tr class="anki-only"><td><kbd>E</kbd></td><td>Edit fields (card open)</td></tr>
             <tr><td><kbd>B</kbd></td><td>Use the base form (card open)</td></tr>
-            <tr><td><kbd>T</kbd></td><td>Show the sentence translation (card open)</td></tr>
+            <tr><td><kbd>T</kbd></td><td>Show the sentence translation, if hidden (card open)</td></tr>
+            <tr><td><kbd>Backspace</kbd></td><td>Back to the speech bubble (manga)</td></tr>
             <tr><td><kbd>M</kbd></td><td>Show more or less: all definitions, kanji, examples (card open)</td></tr>
             <tr><td><kbd>Esc</kbd></td><td>Close the card</td></tr>
           </tbody>
@@ -214,5 +255,7 @@
         <p class="muted small">Change the global shortcuts in about:addons → ⚙ → Manage Extension Shortcuts.</p>
       </section>
     </main>
+    </div>
+    <div id="saved" class="toast" role="status" hidden>Saved</div>
   </body>
 </html>

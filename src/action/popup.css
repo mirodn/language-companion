@@ -1,49 +1,132 @@
 body {
-  width: 300px;
-  padding: 12px 14px;
+  width: 320px;
+  padding: var(--space-3);
 }
 
-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 8px;
+p {
+  margin: 0;
 }
 
-#anki-status {
-  margin: 0 0 12px;
-  font-size: 13px;
-}
-
-#summary {
-  margin: -6px 0 12px;
+.small {
   font-size: 12px;
 }
 
-#open-reader {
+.top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.logo {
+  width: 20px;
+  height: 20px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.global {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 12px;
+}
+
+.icon-link {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-s);
+  color: var(--muted);
+}
+
+.icon-link:hover {
+  background: var(--subtle);
+  color: var(--fg);
+}
+
+/* Everything but the header dims while the extension is paused. */
+body.paused #content {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.panel {
+  margin-bottom: var(--space-3);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+}
+
+.panel.compact {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+}
+
+.panel h2 {
+  margin: var(--space-2) 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.setting {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  cursor: pointer;
+}
+
+.setting + .setting {
+  border-top: 1px solid var(--border);
+}
+
+.setting > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.setting b {
+  display: block;
+  font-weight: 500;
+}
+
+.setting small {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.wide {
   width: 100%;
-  margin-bottom: 4px;
+  padding: var(--space-2) var(--space-3);
+  font-weight: 600;
 }
 
 #reader-error {
-  margin: 4px 0 8px;
-  font-size: 12px;
+  margin-top: var(--space-1);
 }
 
-.toggle {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin: 6px 0;
+#open-reader {
+  margin-bottom: var(--space-3);
 }
 
-.toggle[hidden] {
-  display: none;
+#anki-status {
+  font-size: 13px;
 }
 
-.hint {
-  margin: 12px 0 0;
-  font-size: 12px;
+footer {
+  display: grid;
+  gap: var(--space-1);
 }
 
 kbd {

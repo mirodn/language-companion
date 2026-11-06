@@ -62,7 +62,7 @@ Language Companion helps you understand Japanese and Korean in real content: new
 • Select the next word and the same card updates; drag it anywhere on screen while you read
 
 <b>Manga and webtoons</b>
-On sites like Shonen Jump+, click a speech bubble to see its text and translation, then select any word in it to look it up. The text is recognised on your computer: Japanese with manga-ocr, which was trained on manga, Korean with PaddleOCR. On by default for Shonen Jump+, one switch for other sites.
+On sites like Shonen Jump+, click a speech bubble to see its text and translation, then click or drag across words to look them up. The text is recognised on your computer: Japanese with manga-ocr, which was trained on manga, Korean with PaddleOCR. On by default for Shonen Jump+, one switch for other sites.
 
 <b>Reader</b>
 Open any article in a calm reader view where every word is clickable. This helps most with Japanese, where words have no spaces between them. Hold Shift over a word for a quick peek at its reading and meaning.
@@ -85,7 +85,7 @@ Dictionaries: Jisho, KANJIDIC2, Wiktionary, Tatoeba, FrequencyWords. Text recogn
 
 1. `1-japanese-reader.png`: Click any word in the reader: reading, dictionary form and meaning at a glance.
 2. `3-korean-page.png`: Works on any page. Korean verbs lead to their dictionary form.
-3. To do: a manga page with a speech bubble's panel open (text and translation) and the card.
+3. To do: a manga page with a speech bubble open in the card (text, translation, a picked word).
 
 **Release notes for 0.5.0:**
 
@@ -121,12 +121,12 @@ Run in a fresh profile with the built zip:
 - [ ] Japanese page: select 食べました → card shows furigana, "JLPT N5", "Base form" link, one definition, the sentence and its translation; no deck menu or Add button
 - [ ] M shows all definitions, kanji and examples as a plain list; M again hides them
 - [ ] Select another word while the card is open → the same card updates; click empty space → it closes
-- [ ] Drag the card by its header into a corner, scroll, select more words → they appear in the corner; double-click the header → back next to the word
+- [ ] Click the pin → the card stays put while scrolling and on clicks outside; select more words → they appear in it; click the pin again → it follows the text. Dragging the header also pins
 - [ ] Korean page: 갔어요 → "Base form: 가다"
 - [ ] Kanji-only text (学校) is looked up as Japanese; English text: no lookup button appears
 - [ ] Toolbar → Open in reader on a news article; click words; Shift peek
 - [ ] YouTube with Japanese subtitles: click a subtitle word → video pauses → card → close → video resumes
-- [ ] Shonen Jump+ chapter: toolbar switch → permission → "Getting text recognition ready…" → outlines on bubbles; click one → panel with text and translation; select a word → card; clicking a bubble doesn't turn the page; turning the page clears and rescans
+- [ ] Shonen Jump+ chapter: toolbar switch → permission → "Getting text recognition ready…" → outlines on bubbles; the download shows MB progress; click a bubble → the card shows its text and translation; click/drag words → word view with ← back to the bubble; clicking a bubble doesn't turn the page; turning the page clears and rescans
 - [ ] Settings → turn on "Save words to Anki" (Anki open) → deck menus appear; card gets deck menu and Add to Anki; Enter adds; same word again says "Already in deck"
 - [ ] With Anki on, quit Anki → card says "Anki is closed" → "Save for later" → reopen Anki → within 2 minutes the note appears
-- [ ] Dark mode (system) looks right on the card, the bubble panel, reader, setup and settings pages
+- [ ] Dark mode (system) looks right on the card (word and bubble views), the corner notes, the toolbar menu, reader, setup and settings pages

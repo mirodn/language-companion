@@ -118,12 +118,104 @@ function fillDeckSelects(decks) {
 // The Anki settings and the decks next to the languages show only while saving to Anki is on.
 function updateAnki() {
   $("#anki-settings").hidden = !settings.ankiEnabled;
+  for (const row of $$(".anki-only")) row.hidden = !settings.ankiEnabled;
   renderLanguages();
   if (!settings.ankiEnabled) return;
   // Fill decks and note types quietly if Anki is already running.
   loadAnkiLists().catch(() => {
     $("#anki-status").textContent = "Anki not connected. Open Anki and click Test connection.";
   });
+}
+
+// --- Text in images -------------------------------------------------------------
+
+// Firefox lets extensions capture a tab without a click only with <all_urls> (background/ocr.js).
+const ALL_SITES = { origins: ["<all_urls>"] };
+// The cache the background keeps the downloaded models in (background/ocr.js). Extension pages
+// share it, since they have the same origin.
+const MODEL_CACHE = "ocr-models-v2";
+
+async function renderImageText() {
+  const granted = await browser.permissions.contains(ALL_SITES);
+  $("#images-permission").textContent = granted ? "Allowed" : "Not allowed yet: text in images stays off until you allow it.";
+  $("#images-permission").className = granted ? "success" : "muted";
+  $("#images-grant").hidden = granted;
+
+  const rows = settings.imageTextSites.map((site) => {
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "Remove";
+    remove.addEventListener("click", async () => {
+      await save("imageTextSites", settings.imageTextSites.filter((other) => other !== site));
+      renderImageText();
+    });
+    const name = document.createElement("span");
+    name.textContent = site;
+    const row = document.createElement("li");
+    row.append(name, remove);
+    return row;
+  });
+  if (!rows.length) {
+    const empty = document.createElement("li");
+    empty.className = "muted";
+    empty.textContent = "No sites yet.";
+    rows.push(empty);
+  }
+  $("#images-sites").replaceChildren(...rows);
+  renderModels();
+}
+
+async function renderModels() {
+  let bytes = 0;
+  const cache = await caches.open(MODEL_CACHE);
+  for (const request of await cache.keys()) bytes += (await (await cache.match(request)).blob()).size;
+  $("#images-models").textContent = bytes ? `${Math.round(bytes / 1e6)} MB` : "None yet. They download the first time a page is read.";
+  $("#images-delete-models").hidden = !bytes;
+}
+
+// "https://www.example.com/a" → "example.com"; null if it isn't a hostname.
+function siteFrom(input) {
+  const host = input.trim().toLowerCase().replace(/^[a-z]+:\/\//, "").split(/[/?#]/)[0].replace(/^www\./, "");
+  return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(host) ? host : null;
+}
+
+function bindImageText() {
+  $("#images-grant").addEventListener("click", () => browser.permissions.request(ALL_SITES).then(renderImageText));
+  $("#images-add").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const site = siteFrom($("#images-new-site").value);
+    if (!site) {
+      $("#images-new-site").setCustomValidity("Enter a site such as example.com");
+      $("#images-new-site").reportValidity();
+      return;
+    }
+    $("#images-new-site").setCustomValidity("");
+    // Asked first, while this still counts as the user's click.
+    const permission = browser.permissions.request(ALL_SITES);
+    if (!settings.imageTextSites.includes(site)) await save("imageTextSites", [...settings.imageTextSites, site]);
+    $("#images-new-site").value = "";
+    await permission;
+    renderImageText();
+  });
+  $("#images-new-site").addEventListener("input", () => $("#images-new-site").setCustomValidity(""));
+  $("#images-delete-models").addEventListener("click", async () => {
+    await caches.delete(MODEL_CACHE);
+    renderModels();
+  });
+}
+
+// --- Navigation --------------------------------------------------------------------
+
+// Highlights the section being read in the navigation on the left.
+function bindNavigation() {
+  const links = new Map($$(".toc a").map((link) => [link.getAttribute("href").slice(1), link]));
+  const visible = new Set();
+  const observer = new IntersectionObserver((entries) => {
+    for (const entry of entries) entry.isIntersecting ? visible.add(entry.target.id) : visible.delete(entry.target.id);
+    const current = $$("main section").find((section) => visible.has(section.id) && links.has(section.id));
+    for (const [id, link] of links) link.setAttribute("aria-current", String(id === current?.id));
+  }, { rootMargin: "0px 0px -60% 0px" });
+  for (const section of $$("main section[id]")) observer.observe(section);
 }
 
 // --- Translator -------------------------------------------------------------------
@@ -226,6 +318,9 @@ async function init() {
   updateGrantButtons();
   updateMapping();
   updateAnki();
+  bindImageText();
+  renderImageText();
+  bindNavigation();
 
   $("#test-anki").addEventListener("click", testAnki);
   $("#clear-cache").addEventListener("click", async () => {
@@ -234,4 +329,5 @@ async function init() {
   });
 }
 
-init();
+// Switches start animating only after the page has painted its settings (.ready in page.css).
+init().finally(() => requestAnimationFrame(() => requestAnimationFrame(() => document.documentElement.classList.add("ready"))));

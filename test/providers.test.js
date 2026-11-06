@@ -294,6 +294,20 @@ test("Korean particles are stripped when the word as written has no Wiktionary e
   assert.equal((await wiktionary.lookup({ text: "아이", src: "ko" }, DEFAULTS, { fetch })).base, null);
 });
 
+test("segmentWords splits sentences into words that join back into the text", () => {
+  const { segmentWords } = globalThis.LC.languages;
+  const japanese = segmentWords("明日は雨らしいよ。", "ja");
+  assert.equal(japanese.map((part) => part.text).join(""), "明日は雨らしいよ。");
+  assert.ok(japanese.filter((part) => part.isWord).length >= 3);
+  assert.deepEqual(japanese.at(-1), { text: "。", start: 8, end: 9, isWord: false });
+  const korean = segmentWords("내일은 비가 온대요", "ko");
+  assert.deepEqual(korean.filter((part) => part.isWord).map((part) => part.text), ["내일은", "비가", "온대요"]);
+  assert.equal(korean[1].isWord, false);
+  for (const parts of [japanese, korean]) {
+    parts.forEach((part, i) => assert.equal(part.start, i ? parts[i - 1].end : 0));
+  }
+});
+
 test("lookups are offered only for text in the user's languages", () => {
   const { isLearned } = globalThis.LC.languages;
   assert.equal(isLearned(["学校", "学校に行く"], ["ja"]), true);

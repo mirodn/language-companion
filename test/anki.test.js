@@ -72,6 +72,13 @@ test("buildNote skips audio when disabled and handles a single definition", () =
   assert.equal(note.audio, undefined);
 });
 
+test("buildNote only links web pages and only saves audio from https", () => {
+  const note = buildNote({ ...card, pageUrl: "javascript:alert(1)", audioUrl: "http://example.org/haus.ogg" }, settings);
+  assert.equal(note.fields.Source, "Example");
+  assert.equal(note.audio, undefined);
+  assert.equal(buildNote({ ...card, audioUrl: "file:///etc/passwd" }, settings).audio, undefined);
+});
+
 test("buildNote appends card tags, e.g. from YouTube", () => {
   const note = buildNote({ ...card, tags: ["lc::youtube"] }, settings);
   assert.deepEqual(note.tags, ["language-companion", "extra", "lc::de", "lc::youtube"]);

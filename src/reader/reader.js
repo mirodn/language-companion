@@ -243,7 +243,7 @@
     document.title = article.title;
     $("#title").textContent = article.title;
     $("#byline").textContent = [article.byline, article.siteName].filter(Boolean).join(" · ");
-    $("#original").href = article.url;
+    if (isWebUrl(article.url)) $("#original").href = article.url;
     $("#original").textContent = `← ${new URL(article.url).hostname}`;
 
     const body = clean(new DOMParser().parseFromString(article.html, "text/html").body);

@@ -1,55 +1,65 @@
 // Reads text in images on manga and webtoon sites (settings.imageTextSites).
 // The background captures the visible tab, finds the speech bubbles and reads them
-// (background/ocr.js). This script outlines the bubbles; clicking one shows its text in a panel
-// next to it, where words and sentences can be selected and looked up like any text, with the
-// bubble as the sentence. The page is scanned again whenever it changes (page turn, scroll).
+// (background/ocr.js). This script outlines the bubbles; clicking one opens the card on its text
+// (content.js openSentence), where words can be picked and looked up, with the bubble as the
+// sentence. The page is scanned again whenever it changes (page turn, scroll).
 (() => {
   const LC = globalThis.LC;
   const { MSG } = LC;
 
   // Wait this long after the last page event before scanning, so page-turn animations are done.
   const SETTLE_MS = 600;
-  // Show "getting ready" only when a scan is slow, which is mostly the first model download.
+  // Show a note only when a scan is slow, which is mostly the first model download.
   const STATUS_DELAY_MS = 800;
+  // How long the bubbles' outlines show after a scan, so it's clear where the text is.
+  const FLASH_MS = 1200;
+  const HINT_MS = 8000;
+  const HINT_SEEN_KEY = "imageTextHintSeen";
   // Neighbouring lines closer than this share of their width (columns) or height (rows) form a bubble.
   const BUBBLE_GAP = 0.8;
   const BUBBLE_PADDING = 4;
-  const PANEL_GAP = 10;
-  // Keys that may turn the page or scroll. Others (card shortcuts like Enter or E) don't rescan.
+  // Keys that may turn the page or scroll. Others (card shortcuts like Enter or M) don't rescan.
   const NAVIGATION_KEYS = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "];
 
-  // The layer is regular DOM, not a shadow root, so the page's selection can reach the panel's
-  // text. Page CSS can't style these tags; everything else is set here or inline.
-  const STYLE = `
-    language-companion-bubble { display: block; position: fixed; pointer-events: auto; cursor: pointer; border-radius: 6px; }
+  // Page CSS can't style these tags; everything else is set here or inline.
+  const LAYER_STYLE = `
+    language-companion-bubble { display: block; position: fixed; pointer-events: auto; cursor: pointer; border-radius: 6px;
+      outline: 2px solid transparent; outline-offset: 1px; transition: outline-color 500ms, background-color 120ms; }
+    language-companion-text-layer[data-flash] language-companion-bubble { outline-color: rgba(47, 111, 237, 0.4); }
     language-companion-bubble:hover, language-companion-bubble[data-open] {
-      background: rgba(47, 111, 237, 0.08); outline: 2px solid rgba(47, 111, 237, 0.55); }
-    language-companion-panel { display: block; position: fixed; box-sizing: border-box; width: max-content; max-width: 340px;
-      padding: 10px 12px; border: 1px solid #e3e3e8; border-radius: 10px; background: #fff; color: #1d1d1f;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18); pointer-events: auto; font: 13px/1.4 system-ui, sans-serif; text-align: left; }
-    language-companion-panel-head { display: flex; gap: 8px; align-items: center; color: #6e6e73; font-size: 12px; user-select: none; }
-    language-companion-panel-head > :first-child { flex: 1; }
-    language-companion-panel-close { cursor: pointer; padding: 0 4px; font-size: 16px; line-height: 1; }
-    language-companion-panel-text { display: block; margin-top: 6px; font: 20px/1.6 system-ui, sans-serif;
-      user-select: text; cursor: text; overflow-wrap: anywhere; }
-    language-companion-panel-text[data-pending] { color: #6e6e73; font-size: 14px; user-select: none; }
-    language-companion-panel-text ::selection, language-companion-panel-text::selection { background: rgba(47, 111, 237, 0.3); }
-    language-companion-panel-translation { display: block; margin-top: 6px; padding-top: 6px; border-top: 1px solid #e3e3e8;
-      font-size: 14px; color: #3a3a3f; }
-    language-companion-panel-translation:empty { display: none; }
+      background: rgba(47, 111, 237, 0.08); outline-color: rgba(47, 111, 237, 0.65); transition-duration: 120ms; }
+    @media (prefers-reduced-motion: reduce) { language-companion-bubble { transition: none; } }
+  `;
+
+  // The notes in the corner use the card's colours, in light and dark.
+  const NOTES_STYLE = `
+    :host { --bg: #fff; --fg: #1d1d1f; --muted: #6e6e73; --border: #e3e3e8; --accent: #2f6fed; --danger: #c93a3a; }
+    :host([data-theme="dark"]) { --bg: #1f1f22; --fg: #ececf0; --muted: #9a9aa2; --border: #38383d; --accent: #5b8cff; --danger: #ff7373; }
     @media (prefers-color-scheme: dark) {
-      language-companion-panel { background: #1f1f22; color: #ececf0; border-color: #38383d; }
-      language-companion-panel-head, language-companion-panel-text[data-pending] { color: #9a9aa2; }
-      language-companion-panel-translation { color: #c7c7cc; border-color: #38383d; }
+      :host([data-theme="system"]) { --bg: #1f1f22; --fg: #ececf0; --muted: #9a9aa2; --border: #38383d; --accent: #5b8cff; --danger: #ff7373; }
     }
+    .note { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; width: 300px; margin-top: 8px;
+      padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--fg);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.16); font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      animation: rise 160ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+    .note.error .text { color: var(--danger); }
+    .progress { grid-column: 1 / -1; height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; }
+    .progress span { display: block; height: 100%; width: 0; background: var(--accent); transition: width 200ms; }
+    .progress.unknown span { width: 30%; animation: slide 1.1s ease-in-out infinite; }
+    button { all: unset; cursor: pointer; padding: 2px 6px; border-radius: 6px; color: var(--muted); }
+    button:hover { color: var(--fg); background: var(--border); }
+    button.action { color: var(--accent); font-weight: 600; }
+    button:focus-visible { outline: 2px solid var(--accent); }
+    @keyframes rise { from { opacity: 0; transform: translateY(4px); } }
+    @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+    @media (prefers-reduced-motion: reduce) { .note, .progress.unknown span { animation: none; } }
   `;
 
   let active = false;
   let layer = null;
-  let chips = null;
-  let status = null;
-  let notice = null;
-  let panel = null;
+  let notes = null;
+  // The notes in the corner, by kind: "status" (getting ready), "notice" (permission), "hint", "error".
+  const shown = {};
   let bubbles = [];
   let captureId = null;
   // Texts already read for the current capture, by the bubble's line ids, so an unchanged page
@@ -58,11 +68,9 @@
   // Increased by every page change, so results of an older scan are dropped.
   let generation = 0;
   let settleTimer = null;
+  let flashTimer = null;
   let scanning = false;
   let rescan = false;
-  // A selection drag that started in the panel, and one that has just ended.
-  let dragging = false;
-  let dragEnded = false;
 
   async function send(type, payload = {}) {
     const response = await browser.runtime.sendMessage({ type, ...payload });
@@ -82,9 +90,10 @@
     return learning.includes("ko") && (pageLang === "ko" || !learning.includes("ja")) ? "ko" : "ja";
   }
 
-  function element(tag, style = "") {
+  function element(tag, props = {}, ...children) {
     const node = document.createElement(tag);
-    if (style) node.setAttribute("style", style);
+    Object.assign(node, props);
+    node.append(...children);
     return node;
   }
 
@@ -98,20 +107,15 @@
 
   function ensureLayer() {
     if (!layer) {
-      layer = element(
-        "language-companion-text-layer",
-        // Just below the lookup card, which uses the highest z-index.
-        "all: initial; position: fixed; inset: 0; pointer-events: none; z-index: 2147483646;",
-      );
-      const style = document.createElement("style");
-      style.textContent = STYLE;
-      layer.append(style);
+      layer = document.createElement("language-companion-text-layer");
+      // Just below the lookup card, which uses the highest z-index.
+      layer.setAttribute("style", "all: initial; position: fixed; inset: 0; pointer-events: none; z-index: 2147483646;");
+      layer.append(element("style", { textContent: LAYER_STYLE }));
     }
     attach(layer);
   }
 
   function clearBubbles() {
-    closePanel();
     bubbles = [];
     layer?.querySelectorAll("language-companion-bubble").forEach((node) => node.remove());
   }
@@ -120,11 +124,17 @@
     ensureLayer();
     for (const bubble of bubbles) {
       const { x, y, width, height } = bubble.box;
-      bubble.node = element("language-companion-bubble", `left: ${x}px; top: ${y}px; width: ${width}px; height: ${height}px;`);
-      bubble.node.title = "Show the text";
+      bubble.node = document.createElement("language-companion-bubble");
+      bubble.node.setAttribute("style", `left: ${x}px; top: ${y}px; width: ${width}px; height: ${height}px;`);
+      bubble.node.title = "Read and translate";
       layer.append(bubble.node);
       if (texts.has(bubble.key)) setText(bubble, texts.get(bubble.key));
     }
+    // Outlines show briefly, then only on hover.
+    layer.toggleAttribute("data-flash", bubbles.length > 0);
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => layer?.removeAttribute("data-flash"), FLASH_MS);
+    if (bubbles.length) showHintOnce();
   }
 
   function setText(bubble, text) {
@@ -132,7 +142,6 @@
     bubble.text = text;
     // Nothing readable: stray furigana or part of the drawing.
     if (!text) bubble.node?.remove();
-    if (panel?.bubble === bubble) fillPanel();
   }
 
   // Lines of one speech bubble: neighbouring columns (vertical text) or rows (horizontal text).
@@ -195,145 +204,81 @@
     }
   }
 
-  // --- Panel -------------------------------------------------------------------------
-
-  function openPanel(bubble) {
-    closePanel();
-    ensureLayer();
-    panel = element("language-companion-panel");
-    panel.bubble = bubble;
-    panel.lang = layer.lang;
-    const head = element("language-companion-panel-head");
-    const hint = element("span");
-    hint.textContent = "Select words to look them up";
-    const close = element("language-companion-panel-close");
-    close.textContent = "×";
-    close.title = "Close (Esc)";
-    head.append(hint, close);
-    panel.text = element("language-companion-panel-text");
-    panel.translation = element("language-companion-panel-translation");
-    panel.append(head, panel.text, panel.translation);
-    layer.append(panel);
-    bubble.node.dataset.open = "";
-    fillPanel();
-    readBubble(bubble).catch(() => {
-      if (panel?.bubble === bubble) showPanelText("Couldn't read this bubble.", true);
-    });
-  }
-
-  function fillPanel() {
-    const { bubble } = panel;
-    if (!bubble.read) showPanelText("Reading…", true);
-    else if (!bubble.text) showPanelText("No text found here.", true);
-    else {
-      showPanelText(bubble.text, false);
-      showTranslation(bubble);
+  // Opens the card on a bubble; its text follows as soon as the bubble is read.
+  async function openBubble(bubble) {
+    for (const other of bubbles) other.node?.removeAttribute("data-open");
+    bubble.node.setAttribute("data-open", "");
+    const { x, y, width, height } = bubble.box;
+    const view = await LC.companion.openSentence(
+      { left: x, top: y, right: x + width, bottom: y + height },
+      { lang: layer.lang, context: { pageUrl: location.href, pageTitle: document.title, tags: ["lc::manga"] } },
+    );
+    try {
+      await readBubble(bubble);
+      view.setText(bubble.text);
+    } catch {
+      view.setError("Couldn't read this bubble. Turn the page or scroll a little to try again.");
     }
-  }
-
-  // The whole bubble, translated with the translator from the settings. Only for bubbles that are
-  // opened, so paging through a chapter doesn't use up the translator's daily limit.
-  async function showTranslation(bubble) {
-    panel.translation.textContent = bubble.translated ?? "Translating…";
-    if (bubble.translated !== undefined) return placePanel();
-    placePanel();
-    bubble.translating ??= send(MSG.LOOKUP, { text: bubble.text, sourceLang: panel.lang, pageLang: panel.lang })
-      .then(({ translation }) => translation)
-      .catch(() => "");
-    const translated = await bubble.translating;
-    bubble.translated = translated;
-    if (panel?.bubble !== bubble) return;
-    panel.translation.textContent = translated;
-    placePanel();
-  }
-
-  function showPanelText(text, pending) {
-    panel.text.textContent = text;
-    panel.text.toggleAttribute("data-pending", pending);
-    placePanel();
-  }
-
-  // Beside the bubble, on whichever side has room, and inside the window.
-  function placePanel() {
-    const { box } = panel.bubble;
-    const { width, height } = panel.getBoundingClientRect();
-    let left = box.x + box.width + PANEL_GAP;
-    if (left + width > window.innerWidth - PANEL_GAP) left = box.x - PANEL_GAP - width;
-    left = Math.max(PANEL_GAP, Math.min(left, window.innerWidth - width - PANEL_GAP));
-    const top = Math.max(PANEL_GAP, Math.min(box.y, window.innerHeight - height - PANEL_GAP));
-    panel.style.left = `${left}px`;
-    panel.style.top = `${top}px`;
-  }
-
-  function closePanel() {
-    if (!panel) return;
-    delete panel.bubble.node?.dataset.open;
-    panel.remove();
-    panel = null;
-  }
-
-  // The selection in the panel, as selection.js would describe it, with the whole bubble as the sentence.
-  function selectionInfo() {
-    const selection = window.getSelection();
-    if (!panel || !selection || selection.isCollapsed || !selection.rangeCount) return null;
-    const range = selection.getRangeAt(0);
-    if (!panel.text.contains(range.startContainer)) return null;
-    const lang = panel.lang;
-    const text = lang === "ko" ? selection.toString().replace(/\s+/g, " ").trim() : selection.toString().replace(/\s+/g, "");
-    if (!text || text.length > LC.companion.settings.maxSelectionLength) return null;
-    return {
-      text,
-      sentence: panel.bubble.text,
-      rect: range.getBoundingClientRect(),
-      pageLang: lang,
-      context: { pageUrl: location.href, pageTitle: document.title, tags: ["lc::manga"] },
-    };
   }
 
   // --- Notes in the corner -----------------------------------------------------------
 
-  function chip(text, { dismissible = false } = {}) {
-    if (!chips) {
-      chips = element("language-companion-image-text", "all: initial; position: fixed; left: 12px; bottom: 12px; z-index: 2147483646;");
-      const shadow = chips.attachShadow({ mode: "closed" });
-      const style = document.createElement("style");
-      style.textContent = `
-        .chip { display: flex; gap: 8px; align-items: flex-start; max-width: 320px; margin-top: 6px; padding: 6px 10px;
-          border-radius: 8px; font: 12px/1.4 system-ui, sans-serif; color: #1d1d1f; background: #fff;
-          box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2); }
-        button { all: unset; cursor: pointer; padding: 0 4px; color: #6e6e73; }
-      `;
-      chips.list = document.createElement("div");
-      shadow.append(style, chips.list);
+  function ensureNotes() {
+    if (!notes) {
+      notes = document.createElement("language-companion-notes");
+      notes.setAttribute("style", "all: initial; display: block; position: fixed; left: 12px; bottom: 12px; z-index: 2147483646;");
+      const shadow = notes.attachShadow({ mode: "closed" });
+      notes.list = document.createElement("div");
+      shadow.append(element("style", { textContent: NOTES_STYLE }), notes.list);
     }
-    attach(chips);
-    const node = document.createElement("div");
-    node.className = "chip";
-    const label = document.createElement("span");
-    label.textContent = text;
-    node.append(label);
-    if (dismissible) {
-      const close = document.createElement("button");
-      close.textContent = "×";
-      close.title = "Close";
-      close.addEventListener("click", () => {
-        notice?.remove();
-        notice = null;
-      });
-      node.append(close);
-    }
-    chips.list.append(node);
-    return node;
+    notes.dataset.theme = LC.companion.settings.theme;
+    attach(notes);
   }
 
-  function setStatus(text) {
-    status?.remove();
-    status = text ? chip(text) : null;
+  // Shows one note of a kind, replacing the previous one of that kind.
+  // options: { error, progress (0–1, or null while unknown), action: [label, onClick], dismissible }
+  function showNote(kind, text, { error = false, progress, action, dismissible = false } = {}) {
+    ensureNotes();
+    const node = element("div", { className: error ? "note error" : "note", role: error ? "alert" : "status" }, element("span", { className: "text", textContent: text }));
+    const buttons = element("span");
+    if (action) buttons.append(element("button", { className: "action", textContent: action[0], onclick: action[1] }));
+    if (dismissible) buttons.append(element("button", { textContent: "✕", title: "Close", ariaLabel: "Close", onclick: () => hideNote(kind) }));
+    node.append(buttons);
+    if (progress !== undefined) {
+      const bar = element("span");
+      if (progress !== null) bar.style.width = `${Math.round(progress * 100)}%`;
+      node.append(element("div", { className: progress === null ? "progress unknown" : "progress" }, bar));
+    }
+    shown[kind]?.remove();
+    shown[kind] = node;
+    notes.list.append(node);
+  }
+
+  function hideNote(kind) {
+    shown[kind]?.remove();
+    delete shown[kind];
   }
 
   function showPermissionNotice() {
-    if (notice) return;
-    notice = chip("To read the text in these pages, click the Language Companion button in the toolbar and turn on “Read text in images on this site”.", { dismissible: true });
+    if (shown.notice) return;
+    showNote("notice", "To read the text in these pages, click the Language Companion button in the toolbar and turn on “Read text in images”.", { dismissible: true });
+  }
+
+  // The first time bubbles show up anywhere, say what to do with them.
+  async function showHintOnce() {
+    const { [HINT_SEEN_KEY]: seen } = await browser.storage.local.get(HINT_SEEN_KEY);
+    if (seen || shown.hint) return;
+    await browser.storage.local.set({ [HINT_SEEN_KEY]: true });
+    showNote("hint", "Click a speech bubble to read and translate it. Then click or drag across words to look them up.", { dismissible: true });
+    setTimeout(() => hideNote("hint"), HINT_MS);
+  }
+
+  // Download progress of the models, sent by the background while it fetches them.
+  function showProgress({ loaded, total }) {
+    if (total && loaded >= total) return showNote("status", "Preparing text recognition…", { progress: null });
+    const megabytes = (bytes) => Math.round(bytes / 1e6);
+    const text = total ? `Downloading text recognition · ${megabytes(loaded)} of ${megabytes(total)} MB` : "Downloading text recognition…";
+    showNote("status", text, { progress: total ? loaded / total : null });
   }
 
   // --- Scanning ----------------------------------------------------------------------
@@ -347,8 +292,8 @@
 
   // The extension's own UI isn't page text.
   function ownRects() {
-    return [LC.companion.cardRect(), status?.getBoundingClientRect(), notice?.getBoundingClientRect()]
-      .filter(Boolean)
+    return [LC.companion.cardRect(), notes?.list.getBoundingClientRect()]
+      .filter((rect) => rect && rect.width && rect.height)
       .map(({ left, top, right, bottom }) => ({ left, top, right, bottom }));
   }
 
@@ -360,7 +305,7 @@
     }
     scanning = true;
     const scanned = generation;
-    const slow = setTimeout(() => setStatus("Getting text recognition ready…"), STATUS_DELAY_MS);
+    const slow = setTimeout(() => !shown.status && showNote("status", "Getting text recognition ready…", { progress: null }), STATUS_DELAY_MS);
     try {
       const lang = language();
       const result = await send(MSG.OCR_SCAN, {
@@ -368,6 +313,7 @@
         viewport: { width: window.innerWidth, height: window.innerHeight },
         exclude: ownRects(),
       });
+      hideNote("error");
       if (scanned !== generation) return;
       if (result.captureId !== captureId) texts.clear();
       captureId = result.captureId;
@@ -378,10 +324,15 @@
       readAll(scanned);
     } catch (error) {
       if (error.message === "permission") showPermissionNotice();
-      else console.warn("Language Companion: reading text in images failed:", error);
+      // The tab went to the background; it scans again once it's visible (visibilitychange).
+      else if (error.message === "not-visible") return;
+      else {
+        console.warn("Language Companion: reading text in images failed:", error);
+        showNote("error", `Couldn't read the text on this page. ${error.message}`, { error: true, action: ["Try again", () => pageChanged()], dismissible: true });
+      }
     } finally {
       clearTimeout(slow);
-      setStatus("");
+      hideNote("status");
       scanning = false;
       if (rescan) {
         rescan = false;
@@ -396,60 +347,26 @@
     return Boolean(layer && target instanceof Node && layer.contains(target));
   }
 
-  // Capture on window, so the site's viewer never sees presses, drags and clicks on bubbles or
-  // the panel (no page turn, no swipe). Default actions stay, so text in the panel can be selected.
-  for (const type of ["pointerdown", "mousedown", "touchstart"]) {
+  // Capture on window, so the site's viewer never sees presses and clicks on bubbles (no page
+  // turn, no swipe). Clicks are handled here, since the events stop here.
+  for (const type of ["pointerdown", "mousedown", "touchstart", "pointerup", "mouseup", "touchend", "click", "dblclick"]) {
     window.addEventListener(
       type,
       (event) => {
         if (!active || !inLayer(event.target)) return;
         event.stopImmediatePropagation();
-        if (type === "pointerdown" && panel?.text.contains(event.target)) dragging = true;
+        if (type !== "click" || event.button !== 0) return;
+        const bubble = bubbles.find((item) => item.node === event.target);
+        // Only real clicks: a page script can't make the extension read its screen (see content.js).
+        if (bubble && event.isTrusted) openBubble(bubble);
       },
       true,
     );
   }
-  for (const type of ["pointermove", "mousemove", "touchmove"]) {
-    window.addEventListener(type, (event) => dragging && event.stopImmediatePropagation(), true);
-  }
-  for (const type of ["pointerup", "mouseup", "touchend", "click", "dblclick"]) {
-    window.addEventListener(
-      type,
-      (event) => {
-        // A drag that ends outside the panel still ends with a click, which isn't for the page.
-        if (!active || (!dragging && !dragEnded && !inLayer(event.target))) return;
-        event.stopImmediatePropagation();
-        // The events stop here, so clicks are handled here rather than on the elements.
-        if (type === "click" && !dragEnded) {
-          const bubble = bubbles.find((item) => item.node === event.target);
-          if (bubble) openPanel(bubble);
-          else if (event.target.closest?.("language-companion-panel-close")) closePanel();
-        }
-        if (type !== "mouseup" || (!dragging && !panel?.text.contains(event.target))) return;
-        dragging = false;
-        dragEnded = true;
-        // The selection is only final after the mouseup has been processed.
-        setTimeout(() => {
-          dragEnded = false;
-          LC.companion.offerSelection(selectionInfo());
-        }, 0);
-      },
-      true,
-    );
-  }
-
-  window.addEventListener(
-    "keydown",
-    (event) => {
-      // Esc closes the card first (content.js), then the panel.
-      if (active && panel && event.key === "Escape" && !LC.companion.cardRect()) closePanel();
-    },
-    true,
-  );
 
   // Anything that may change what's on screen. Events on the extension's own UI don't count.
   function onPageEvent(event) {
-    if (!active || inLayer(event.target) || event.target === chips || LC.companion.contains(event.target)) return;
+    if (!event.isTrusted || !active || inLayer(event.target) || event.target === notes || LC.companion.contains(event.target)) return;
     if (event.type === "keydown" && !NAVIGATION_KEYS.includes(event.key)) return;
     pageChanged();
   }
@@ -470,8 +387,9 @@
     else {
       generation += 1;
       layer?.remove();
-      chips?.remove();
-      layer = chips = status = notice = panel = null;
+      notes?.remove();
+      layer = notes = null;
+      for (const kind of Object.keys(shown)) delete shown[kind];
       bubbles = [];
     }
   }
@@ -481,6 +399,8 @@
     if (!LC.companion?.settings) return;
     clearInterval(startup);
     update();
+    // The open bubble keeps its outline until the card closes.
+    LC.companion.onClose(() => bubbles.forEach((bubble) => bubble.node?.removeAttribute("data-open")));
     browser.storage.onChanged.addListener((changes, area) => {
       if (area !== "sync") return;
       // content.js reloads the settings on the same event.
@@ -490,12 +410,14 @@
         if (wasActive && active) pageChanged();
       }, 100);
     });
-    // Sent by the background once the permission was granted, so no reload is needed.
     browser.runtime.onMessage.addListener((message) => {
-      if (message?.type !== MSG.IMAGE_TEXT_REFRESH) return;
-      notice?.remove();
-      notice = null;
-      if (active) pageChanged();
+      if (!active) return;
+      if (message?.type === MSG.OCR_PROGRESS) showProgress(message);
+      // Sent by the background once the permission was granted, so no reload is needed.
+      if (message?.type === MSG.IMAGE_TEXT_REFRESH) {
+        hideNote("notice");
+        pageChanged();
+      }
     });
   }, 100);
 })();

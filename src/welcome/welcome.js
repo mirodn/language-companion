@@ -176,4 +176,5 @@ async function init() {
   if (settings.ankiEnabled) checkAnki({ quiet: true });
 }
 
-init();
+// Switches start animating only after the page has painted its settings (.ready in page.css).
+init().finally(() => requestAnimationFrame(() => requestAnimationFrame(() => document.documentElement.classList.add("ready"))));

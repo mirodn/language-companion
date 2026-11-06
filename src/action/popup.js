@@ -1,9 +1,10 @@
 import { STORAGE_KEY, loadLog } from "../background/word-log.js";
 import { summarize } from "../stats/summary.js";
 
-const { MSG, settings: settingsStore } = globalThis.LC;
+const { MSG, languages, settings: settingsStore } = globalThis.LC;
 
 const $ = (selector) => document.querySelector(selector);
+const ALL_SITES = { origins: ["<all_urls>"] };
 
 async function showAnkiStatus() {
   const dot = $("#anki-status .dot");
@@ -22,64 +23,90 @@ async function showSummary() {
   const parts = [`${plural(thisWeek, "word")} this week`];
   if (queued.length) parts.push(`${queued.length} waiting for Anki`);
   $("#summary").textContent = parts.join(" · ");
-  $("#summary").hidden = false;
 }
 
-// Text in images (manga, webtoons) for the current site. It needs the all-sites permission,
-// because Firefox only lets extensions capture a tab without a click with <all_urls>.
-async function setupImageText(settings) {
+// The current tab's hostname for http(s) pages, otherwise "".
+async function currentHost() {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-  let hostname = "";
   try {
     const url = new URL(tab?.url ?? "");
-    if (url.protocol === "http:" || url.protocol === "https:") hostname = url.hostname.replace(/^www\./, "");
+    return url.protocol === "http:" || url.protocol === "https:" ? url.hostname : "";
   } catch {
-    // No page URL (e.g. a new tab).
+    return ""; // No page URL (e.g. a new tab).
   }
-  if (!hostname) return;
-  const ALL_SITES = { origins: ["<all_urls>"] };
-  const listed = settings.imageTextSites.some((site) => hostname === site || hostname.endsWith(`.${site}`));
-  $("#image-text-site").textContent = hostname;
-  $("#image-text").checked = listed && (await browser.permissions.contains(ALL_SITES));
-  $("#image-text-row").hidden = false;
+}
 
+function showPaused(enabled) {
+  document.body.classList.toggle("paused", !enabled);
+  $("#paused").hidden = enabled;
+}
+
+// Switches for the current site: lookups, text in images, and YouTube subtitles on YouTube.
+async function setupSite(settings, hostname) {
+  const site = hostname.replace(/^www\./, "");
+  $("#site").hidden = false;
+  $("#site-name").textContent = site;
+
+  $("#site-enabled").checked = !settings.disabledSites.includes(hostname);
+  $("#site-enabled").addEventListener("change", (e) => {
+    const others = settings.disabledSites.filter((other) => other !== hostname);
+    settings.disabledSites = e.target.checked ? others : [...others, hostname];
+    settingsStore.saveSettings({ disabledSites: settings.disabledSites });
+  });
+
+  // Text in images needs the all-sites permission: Firefox only lets extensions capture a tab
+  // without a click with <all_urls>.
+  const listed = settings.imageTextSites.some((other) => site === other || site.endsWith(`.${other}`));
+  $("#image-text").checked = listed && (await browser.permissions.contains(ALL_SITES));
   $("#image-text").addEventListener("change", async (e) => {
-    const sites = settings.imageTextSites.filter((site) => hostname !== site && !hostname.endsWith(`.${site}`));
+    const sites = settings.imageTextSites.filter((other) => site !== other && !site.endsWith(`.${other}`));
     if (!e.target.checked) {
+      settings.imageTextSites = sites;
       await settingsStore.saveSettings({ imageTextSites: sites });
       return;
     }
     // Saved without waiting: permissions.request has to run directly in the click handler, and
     // Firefox may close this popup while its prompt is open. The background tells the tabs once
     // the permission is granted.
-    settings.imageTextSites = [...sites, hostname];
+    settings.imageTextSites = [...sites, site];
     settingsStore.saveSettings({ imageTextSites: settings.imageTextSites });
     e.target.checked = await browser.permissions.request(ALL_SITES);
   });
+
+  if (site === "youtube.com" || site.endsWith(".youtube.com")) {
+    $("#youtube-row").hidden = false;
+    $("#youtube-enabled").checked = settings.youtubeEnabled;
+    $("#youtube-enabled").addEventListener("change", (e) => settingsStore.saveSettings({ youtubeEnabled: e.target.checked }));
+  }
+}
+
+function openPage(url) {
+  browser.tabs.create({ url: browser.runtime.getURL(url) });
+  window.close();
 }
 
 async function init() {
   const settings = await settingsStore.getSettings();
 
   $("#enabled").checked = settings.enabled;
-  $("#enabled").addEventListener("change", (e) => settingsStore.saveSettings({ enabled: e.target.checked }));
-
-  $("#youtube-enabled").checked = settings.youtubeEnabled;
-  $("#youtube-enabled").addEventListener("change", (e) => settingsStore.saveSettings({ youtubeEnabled: e.target.checked }));
-
-  setupImageText(settings);
-
-  $("#open-options").addEventListener("click", (e) => {
-    e.preventDefault();
-    browser.runtime.openOptionsPage();
-    window.close();
+  showPaused(settings.enabled);
+  $("#enabled").addEventListener("change", (e) => {
+    settingsStore.saveSettings({ enabled: e.target.checked });
+    showPaused(e.target.checked);
   });
 
-  $("#open-stats").addEventListener("click", (e) => {
-    e.preventDefault();
-    browser.tabs.create({ url: browser.runtime.getURL("src/stats/stats.html") });
-    window.close();
-  });
+  const hostname = await currentHost();
+  if (hostname) setupSite(settings, hostname);
+  else $("#open-reader").hidden = true;
+
+  $("#languages-link").textContent = settings.learning.map((code) => languages.name(code)).join(" · ");
+  for (const link of [$("#open-options"), $("#languages-link")]) {
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      browser.runtime.openOptionsPage();
+      window.close();
+    });
+  }
 
   // Clean view of the current page's article with clickable words (see src/reader).
   $("#open-reader").addEventListener("click", async () => {
@@ -91,13 +118,17 @@ async function init() {
   });
 
   // Anki status, saved words and stats only matter when saving to Anki is on.
-  $("#stats-link").hidden = !settings.ankiEnabled;
   if (!settings.ankiEnabled) return;
-  $("#anki-status").hidden = false;
+  $("#anki").hidden = false;
+  $("#open-stats").addEventListener("click", (e) => {
+    e.preventDefault();
+    openPage("src/stats/stats.html");
+  });
   showSummary();
   // A successful status check also adds waiting notes, which updates the log.
   browser.storage.onChanged.addListener((changes, area) => area === "local" && changes[STORAGE_KEY] && showSummary());
   showAnkiStatus();
 }
 
-init();
+// Switches start animating only after the page has painted its settings (.ready in page.css).
+init().finally(() => requestAnimationFrame(() => requestAnimationFrame(() => document.documentElement.classList.add("ready"))));

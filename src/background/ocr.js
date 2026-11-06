@@ -11,12 +11,26 @@ const PPOCR = "https://huggingface.co/nakamura196/ppocrv5-mobile-web-onnx/resolv
 const KOREAN = "https://huggingface.co/monkt/paddleocr-onnx/resolve/7b02d0a30a07ba2b92ad1ff5a8941ae2c633de65/languages/korean";
 const MANGA_OCR = "https://huggingface.co/onnx-community/manga-ocr-base-ONNX/resolve/f9023406bb2f6b17df67bc4a327c56ecd20611f0/onnx";
 const MANGA_OCR_VOCAB = "https://huggingface.co/kha-white/manga-ocr-base/resolve/aa6573bd10b0d446cbf622e29c3e084914df9741/vocab.txt";
-const DETECT_MODEL = `${PPOCR}/PP-OCRv5_mobile_det.onnx`;
+// Each file with its SHA-256, checked before it's cached or run.
+const DETECT_MODEL = { url: `${PPOCR}/PP-OCRv5_mobile_det.onnx`, sha256: "6bdf743af375b13fbbeeb47a91a40063af5bfb7a7f197f6df8cb990dc827e5d6" };
 // PaddleOCR line readers. Japanese uses manga-ocr instead.
 const LINE_READERS = {
-  ko: { model: `${KOREAN}/rec.onnx`, dict: `${KOREAN}/dict.txt`, parse: (text) => text.replace(/\n$/, "").split("\n") },
+  ko: {
+    model: { url: `${KOREAN}/rec.onnx`, sha256: "322f140154c820fcb83c3d24cfe42c9ec70dd1a1834163306a7338136e4f1eaa" },
+    dict: { url: `${KOREAN}/dict.txt`, sha256: "a88071c68c01707489baa79ebe0405b7beb5cca229f4fc94cc3ef992328802d7" },
+    parse: (text) => text.replace(/\n$/, "").split("\n"),
+  },
 };
-const MODEL_CACHE = "ocr-models-v1";
+const MANGA_OCR_FILES = {
+  encoder: { url: `${MANGA_OCR}/encoder_model_quantized.onnx`, sha256: "ddd1af56963093795705fa38da6ce7e6567d1658e7c7359db7e13fcd37dbf279" },
+  decoder: { url: `${MANGA_OCR}/decoder_model_quantized.onnx`, sha256: "2e7177d2b0a59f1c612b694ed70c13971bee765cc2b2bc7bc9376e4753652f27" },
+  vocab: { url: MANGA_OCR_VOCAB, sha256: "344fbb6b8bf18c57839e924e2c9365434697e0227fac00b88bb4899b78aa594d" },
+};
+// v2: files are verified since 0.5; older, unverified downloads are dropped.
+const MODEL_CACHE = "ocr-models-v2";
+const LANGS = ["ja", "ko"];
+const MAX_EXCLUDE = 10;
+const MAX_LINES_PER_READ = 64;
 
 // Screenshots are scaled down to this longest side for finding text; bubbles are read at full size.
 const DETECT_SIZE = 1280;
@@ -41,19 +55,72 @@ function serial(task) {
   return run;
 }
 
+// Downloads from before 0.5, which weren't verified.
+export function dropOldModels() {
+  return caches.delete("ocr-models-v1");
+}
+
 export function hasPermission() {
   return browser.permissions.contains({ origins: ["<all_urls>"] });
 }
 
-async function download(url) {
-  const cache = await caches.open(MODEL_CACHE);
-  let response = await cache.match(url);
-  if (!response) {
-    response = await fetch(url);
-    if (!response.ok) throw new Error(`Couldn't download the text recognition models (HTTP ${response.status}).`);
-    await cache.put(url, response.clone());
+// Downloads in progress ({ loaded, total, done } by URL) and the tabs waiting for them, which
+// get progress messages for the note in their corner (content/image-text.js).
+const downloads = new Map();
+const waitingTabs = new Set();
+const PROGRESS_INTERVAL_MS = 250;
+let lastReport = 0;
+
+function reportProgress(force = false) {
+  const now = Date.now();
+  if (!force && now - lastReport < PROGRESS_INTERVAL_MS) return;
+  lastReport = now;
+  let loaded = 0;
+  let total = 0;
+  for (const item of downloads.values()) {
+    loaded += item.loaded;
+    total += item.total;
   }
-  return new Uint8Array(await response.arrayBuffer());
+  for (const tabId of waitingTabs) {
+    browser.tabs.sendMessage(tabId, { type: globalThis.LC.MSG.OCR_PROGRESS, loaded, total }).catch(() => {});
+  }
+  if ([...downloads.values()].every((item) => item.done)) downloads.clear();
+}
+
+async function sha256(bytes) {
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+  return Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function download({ url, sha256: expected }) {
+  const cache = await caches.open(MODEL_CACHE);
+  const cached = await cache.match(url);
+  if (cached) return new Uint8Array(await cached.arrayBuffer());
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Couldn't download the text recognition models (HTTP ${response.status}).`);
+  const progress = { loaded: 0, total: Number(response.headers.get("content-length")) || 0, done: false };
+  downloads.set(url, progress);
+  try {
+    const chunks = [];
+    const reader = response.body.getReader();
+    for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
+      chunks.push(chunk.value);
+      progress.loaded += chunk.value.length;
+      reportProgress();
+    }
+    const bytes = new Uint8Array(progress.loaded);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.length;
+    }
+    if ((await sha256(bytes)) !== expected) throw new Error("The downloaded text recognition model is damaged. Try again.");
+    await cache.put(url, new Response(bytes));
+    return bytes;
+  } finally {
+    Object.assign(progress, { done: true, total: progress.total || progress.loaded, loaded: progress.total || progress.loaded });
+    reportProgress(true);
+  }
 }
 
 async function ort() {
@@ -86,9 +153,9 @@ function paddle(lang) {
 function mangaOcr() {
   return engine("manga-ocr", async () => {
     const [encoderModel, decoderModel, vocab] = await Promise.all([
-      download(`${MANGA_OCR}/encoder_model_quantized.onnx`),
-      download(`${MANGA_OCR}/decoder_model_quantized.onnx`),
-      download(MANGA_OCR_VOCAB),
+      download(MANGA_OCR_FILES.encoder),
+      download(MANGA_OCR_FILES.decoder),
+      download(MANGA_OCR_FILES.vocab),
     ]);
     return createMangaOcr(await ort(), { encoderModel, decoderModel, vocab: new TextDecoder().decode(vocab).split("\n") });
   });
@@ -121,16 +188,36 @@ function samePage(a, b) {
 // exclude: viewport rects of the extension's own UI (the open card), which aren't page text.
 // Returns { captureId, unchanged, lines: [{ id, box, vertical }] } with boxes in viewport pixels.
 export async function scan({ lang, viewport, exclude = [] }, sender) {
+  if (!LANGS.includes(lang)) throw new Error("Unsupported language.");
+  if (!(viewport?.width > 0 && viewport?.height > 0 && Number.isFinite(viewport.width) && Number.isFinite(viewport.height))) {
+    throw new Error("Invalid viewport.");
+  }
+  if (!Array.isArray(exclude) || exclude.length > MAX_EXCLUDE) throw new Error("Invalid exclude list.");
   if (!(await hasPermission())) throw new Error("permission");
-  const tab = sender.tab;
+  // captureVisibleTab shows whatever tab is in front, so only the visible top frame may scan:
+  // a tab in the background would otherwise read the tab the user is looking at.
+  if (!sender.tab || sender.frameId !== 0) throw new Error("not-visible");
+  const tab = await browser.tabs.get(sender.tab.id);
+  if (!tab.active) throw new Error("not-visible");
   const dataUrl = await browser.tabs.captureVisibleTab(tab.windowId, { format: "png" });
+  // The user may have switched tabs while the screenshot was taken.
+  if (!(await browser.tabs.get(tab.id)).active) throw new Error("not-visible");
   const { image, thumb } = await decode(dataUrl);
   const previous = captures.get(tab.id);
   if (previous?.lang === lang && samePage(previous.thumb, thumb)) {
     return { captureId: previous.id, unchanged: true, lines: previous.lines };
   }
   const scale = image.width / viewport.width;
-  const found = await serial(async () => (await paddle(lang)).detect(image, { maxSide: DETECT_SIZE }));
+  // The first time, this downloads the models, with progress shown in the tab. Japanese bubbles
+  // are read with manga-ocr, which is loaded now too, so the first bubble doesn't wait for it.
+  waitingTabs.add(tab.id);
+  let detector;
+  try {
+    [detector] = await Promise.all([paddle(lang), lang === "ja" && mangaOcr()]);
+  } finally {
+    waitingTabs.delete(tab.id);
+  }
+  const found = await serial(() => detector.detect(image, { maxSide: DETECT_SIZE }));
   const lines = [];
   for (const line of found) {
     const box = { x: line.box.x / scale, y: line.box.y / scale, width: line.box.width / scale, height: line.box.height / scale };
@@ -145,7 +232,8 @@ export async function scan({ lang, viewport, exclude = [] }, sender) {
 // Reads one speech bubble, given as the ids of its lines from scan(). Returns { text }, which is
 // "" when the lines turn out not to be text.
 export async function read({ captureId, ids }, sender) {
-  const capture = captures.get(sender.tab.id);
+  if (!Array.isArray(ids) || ids.length > MAX_LINES_PER_READ || !ids.every(Number.isInteger)) throw new Error("Invalid lines.");
+  const capture = captures.get(sender.tab?.id);
   // The background may have been unloaded since, or the page changed: the caller scans again.
   if (capture?.id !== captureId) throw new Error("expired");
   const lines = ids.map((id) => capture.found.find((line) => line.id === id)).filter(Boolean);

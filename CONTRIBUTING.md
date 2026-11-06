@@ -13,6 +13,8 @@ Open an issue with:
 
 Errors from the extension show up in `about:debugging#/runtime/this-firefox` → Language Companion → **Inspect**.
 
+Found a security problem? Please don't open an issue; report it privately as described in [SECURITY.md](SECURITY.md).
+
 ## Suggesting a feature
 
 Open an issue describing what you were trying to do. The extension tries to stay small and focused on Japanese and Korean learners who want to understand what they read, so the use case matters more than the solution.
@@ -31,6 +33,8 @@ Open an issue describing what you were trying to do. The extension tries to stay
 - Plain JavaScript, no build step and no runtime dependencies. Please don't add a framework or bundler.
 - Match the code around your change: naming, comment style, and small focused functions.
 - Text from pages and dictionaries goes into the DOM with `textContent`, never `innerHTML`.
+- Event handlers that start something (a lookup, a scan, adding a note) ignore events with `isTrusted` false, so pages can't fake them.
+- A new background message is for the extension's own pages only, unless it's added to the content-script list in `src/background/senders.js`.
 - New network access needs a good reason, an entry in `host_permissions`, and a line in [PRIVACY.md](PRIVACY.md).
 - Parsers for dictionary and translation responses get a unit test with a saved response in `test/fixtures/`.
 

@@ -46,6 +46,20 @@
     return Boolean(lang && learning.includes(lang));
   }
 
+  const segmenters = new Map();
+
+  // Splits text into words and the bits between them (spaces, punctuation), in order, so the
+  // pieces join back into the text: [{ text, start, end, isWord }]. Offsets are string indexes.
+  function segmentWords(text, lang) {
+    if (!segmenters.has(lang)) segmenters.set(lang, new Intl.Segmenter(lang || undefined, { granularity: "word" }));
+    return [...segmenters.get(lang).segment(text)].map(({ segment, index, isWordLike }) => ({
+      text: segment,
+      start: index,
+      end: index + segment.length,
+      isWord: Boolean(isWordLike),
+    }));
+  }
+
   LC.languages = Object.freeze({
     list: LANGUAGES,
     // The languages a user can learn, i.e. add in the settings.
@@ -56,6 +70,7 @@
     target: TARGET,
     byScript,
     isLearned,
+    segmentWords,
     hasHan: (text) => HAN.test(text ?? ""),
     // Sentence boundary characters, including CJK punctuation.
     sentenceBreak: /[.!?。！？…]+["'”’)\]」』]*\s*|\n{2,}/g,

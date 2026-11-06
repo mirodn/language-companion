@@ -5,25 +5,56 @@
     <link rel="stylesheet" href="../shared/page.css" />
     <link rel="stylesheet" href="popup.css" />
     <script src="../shared/messages.js"></script>
+    <script src="../shared/languages.js"></script>
     <script src="../shared/settings.js"></script>
     <script type="module" src="popup.js"></script>
   </head>
   <body>
-    <header>
+    <header class="top">
+      <img class="logo" src="../../icons/icon.svg" alt="" />
       <strong>Language Companion</strong>
-      <span class="links"><span id="stats-link"><a href="#" id="open-stats">Stats</a> · </span><a href="#" id="open-options">Settings</a></span>
+      <span class="spacer"></span>
+      <label class="global" title="Turn Language Companion on or off on all sites">
+        <span id="paused" class="muted" hidden>Paused</span>
+        <input type="checkbox" class="switch" id="enabled" aria-label="On for all sites" />
+      </label>
+      <a href="#" id="open-options" class="icon-link" title="Settings" aria-label="Settings">
+        <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M8 10.2a2.2 2.2 0 1 0 0-4.4 2.2 2.2 0 0 0 0 4.4z" />
+          <path d="M13 9.6l1.2.9-1.3 2.3-1.4-.5a5 5 0 0 1-1.4.8L9.8 15H7.2l-.3-1.9a5 5 0 0 1-1.4-.8l-1.4.5-1.3-2.3 1.2-.9a5 5 0 0 1 0-1.6L2.8 7l1.3-2.3 1.4.5a5 5 0 0 1 1.4-.8L7.2 2.5h2.6l.3 1.9a5 5 0 0 1 1.4.8l1.4-.5L14.2 7 13 7.9a5 5 0 0 1 0 1.7z" />
+        </svg>
+      </a>
     </header>
 
-    <p id="anki-status" hidden><span class="dot"></span><span class="text">Checking Anki…</span></p>
-    <p id="summary" class="muted" hidden></p>
+    <div id="content">
+      <section id="site" class="panel" hidden>
+        <h2 id="site-name"></h2>
+        <label class="setting">
+          <span><b>Translate on this site</b><small>Look up words you select here</small></span>
+          <input type="checkbox" class="switch" id="site-enabled" />
+        </label>
+        <label class="setting" id="image-text-row">
+          <span><b>Read text in images</b><small>Manga and webtoons: click a speech bubble</small></span>
+          <input type="checkbox" class="switch" id="image-text" />
+        </label>
+        <label class="setting" id="youtube-row" hidden>
+          <span><b>Clickable subtitles</b><small>Click a word in YouTube subtitles</small></span>
+          <input type="checkbox" class="switch" id="youtube-enabled" />
+        </label>
+      </section>
 
-    <button type="button" id="open-reader" class="primary">Open in reader</button>
-    <p id="reader-error" class="error" hidden></p>
+      <button type="button" id="open-reader" class="primary wide">Open in reader</button>
+      <p id="reader-error" class="error small" hidden></p>
 
-    <label class="toggle"><input type="checkbox" id="enabled" /> Enabled</label>
-    <label class="toggle"><input type="checkbox" id="youtube-enabled" /> Clickable YouTube subtitles</label>
-    <label class="toggle" id="image-text-row" hidden><input type="checkbox" id="image-text" /> <span>Read text in images on <span id="image-text-site"></span></span></label>
+      <section id="anki" class="panel compact" hidden>
+        <p id="anki-status"><span class="dot"></span><span class="text">Checking Anki…</span></p>
+        <p class="small muted"><span id="summary"></span> · <a href="#" id="open-stats">Stats</a></p>
+      </section>
 
-    <p class="muted hint">Select a word on any page to translate it into English, or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>. In the reader, just click a word.</p>
+      <footer>
+        <p class="small muted">Learning <a href="#" id="languages-link"></a></p>
+        <p class="small muted">Select text on any page to translate it, or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>.</p>
+      </footer>
+    </div>
   </body>
 </html>

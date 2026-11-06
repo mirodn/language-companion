@@ -26,5 +26,6 @@
     // Background -> content
     OPEN_CARD: "openCard",
     IMAGE_TEXT_REFRESH: "imageTextRefresh",
+    OCR_PROGRESS: "ocrProgress",
   });
 })();

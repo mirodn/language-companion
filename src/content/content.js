@@ -58,6 +58,10 @@
           lookupId += 1;
           closeListeners.forEach((listener) => listener());
         },
+        onRetry: () => lastRequest && runLookup(lastRequest),
+        // Words picked in a speech bubble: the bubble is the sentence, and Back returns to it.
+        onSentenceSelect: ({ text, sentence, lang, context }) =>
+          runLookup({ text, sentence, pageLang: lang, sourceLang: lang, context, rect: ui.card.getBoundingClientRect(), fromSentence: true }),
       },
     });
     return ui;
@@ -84,12 +88,12 @@
     await runLookup(request, { autoAdd });
   }
 
-  // request: { text, sentence, rect, pageLang, sourceLang?, contentLang?, context?, surface? }
+  // request: { text, sentence, rect, pageLang, sourceLang?, contentLang?, context?, surface?, fromSentence? }
   async function runLookup(request, { autoAdd = false } = {}) {
     lastRequest = request;
     const id = ++lookupId;
     const card = await getUI();
-    card.open(request.rect, request.text, request.context);
+    card.open(request.rect, request.text, request.context, { fromSentence: request.fromSentence });
     // Only reached through the shortcut or the context menu; the lookup button is not offered.
     if (!request.sourceLang && !inMyLanguages(request.text, request.sentence)) {
       card.setLookupError(`This text doesn't look like ${myLanguageNames()}. You can change your languages in the settings.`);
@@ -167,6 +171,33 @@
     return { left: x, right: x, top: y, bottom: y };
   }
 
+  // --- Speech bubbles --------------------------------------------------------------
+
+  // Translations of speech bubbles, so going back to a bubble doesn't translate it again.
+  const bubbleTranslations = new Map();
+
+  // Opens the card on a speech bubble (image-text.js). Its text comes later through the returned
+  // { setText, setError }; once the text is there, it is translated with the user's translator.
+  async function openSentence(rect, { lang, context }) {
+    lookupId += 1;
+    const card = await getUI();
+    const view = card.openSentence(rect, { lang, context });
+    return {
+      setText: async (text) => {
+        card.setSentenceText(view, text);
+        if (!text) return;
+        if (!bubbleTranslations.has(text)) {
+          bubbleTranslations.set(
+            text,
+            send(MSG.LOOKUP, { text, sourceLang: lang, pageLang: lang }).then(({ translation }) => translation, () => ""),
+          );
+        }
+        card.setSentenceTranslation(view, await bubbleTranslations.get(text));
+      },
+      setError: (message) => card.setSentenceError(view, message),
+    };
+  }
+
   // --- Page events ---------------------------------------------------------------
 
   // Shows the lookup button next to a selection, or opens the card right away, as set in the
@@ -183,9 +214,12 @@
     return true;
   }
 
+  // Events a page script made up (isTrusted false) are ignored throughout: otherwise a page could
+  // select text, open the card and press Enter to add notes to Anki or use up a translator's quota.
+
   // An open card stays open while the user selects the next word, and shows that word instead.
   document.addEventListener("mouseup", (event) => {
-    if (!enabledHere() || ui?.contains(event.target) || event.button !== 0) return;
+    if (!event.isTrusted || !enabledHere() || ui?.contains(event.target) || event.button !== 0) return;
     const pressed = pressedAt;
     pressedAt = null;
     // The selection is only final after the mouseup has been processed, and clicks on words in
@@ -194,17 +228,17 @@
       // While a card is being edited, text on the page may be selected to copy into it.
       if (ui?.isEditing) return;
       const offered = offerSelection(selection.current(settings.maxSelectionLength));
-      if (!offered && pressed !== null && pressed === lookupId) ui?.close();
+      if (!offered && pressed !== null && pressed === lookupId && !ui?.isPinned) ui?.close();
     }, 0);
   });
 
   document.addEventListener(
     "mousedown",
     (event) => {
-      if (!ui || ui.contains(event.target) || ui.isEditing) return;
+      if (!event.isTrusted || !ui || ui.contains(event.target) || ui.isEditing) return;
       ui.hideTrigger();
       if (event.button === 0) pressedAt = lookupId;
-      else ui.close();
+      else if (!ui.isPinned) ui.close();
     },
     true,
   );
@@ -213,7 +247,7 @@
   window.addEventListener(
     "keydown",
     (event) => {
-      if (ui?.handleKey(event)) {
+      if (event.isTrusted && ui?.handleKey(event)) {
         event.preventDefault();
         event.stopPropagation();
       }
@@ -247,6 +281,7 @@
   // Used by site integrations such as youtube.js.
   LC.companion = {
     lookup: runLookup,
+    openSentence,
     // For selections the page's own events don't report, e.g. in image-text.js.
     offerSelection: (info) => !ui?.isEditing && offerSelection(info),
     onClose: (listener) => closeListeners.push(listener),

@@ -105,7 +105,10 @@ export function buildNote(card, settings) {
           .filter(Boolean)
           .join("<br>")
       : "",
-    Source: card.pageUrl ? `<a href="${escapeHtml(card.pageUrl)}">${escapeHtml(card.pageTitle || card.pageUrl)}</a>` : "",
+    // Only web pages become links: Anki shows cards in a web view, where a javascript: link would run.
+    Source: isWebUrl(card.pageUrl)
+      ? `<a href="${escapeHtml(card.pageUrl)}">${escapeHtml(card.pageTitle || card.pageUrl)}</a>`
+      : escapeHtml(card.pageTitle),
     Language: escapeHtml(card.sourceLang),
   };
 
@@ -131,7 +134,8 @@ export function buildNote(card, settings) {
     options: { allowDuplicate: false, duplicateScope: "deck" },
   };
 
-  if (settings.saveAudio && card.audioUrl && fieldMap.Audio) {
+  // AnkiConnect downloads the audio on the user's computer, so only from https: URLs.
+  if (settings.saveAudio && isHttpsUrl(card.audioUrl) && fieldMap.Audio) {
     note.audio = [{ url: card.audioUrl, filename: audioFilename(card), fields: [fieldMap.Audio] }];
   }
   return note;
@@ -150,6 +154,17 @@ export function duplicateQuery(card, settings) {
   const term = (s) => `"${String(s).replace(/([\\"*_])/g, "\\$1")}"`;
   return `${term(`deck:${card.deck || settings.deck}`)} ${term(`${fieldMap.Word}:${escapeHtml(card.word)}`)}`;
 }
+
+function urlProtocol(value) {
+  try {
+    return new URL(value).protocol;
+  } catch {
+    return "";
+  }
+}
+
+const isWebUrl = (value) => ["http:", "https:"].includes(urlProtocol(value));
+const isHttpsUrl = (value) => urlProtocol(value) === "https:";
 
 export function escapeHtml(value) {
   return String(value ?? "")

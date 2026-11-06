@@ -41,7 +41,7 @@
     "https://api.tatoeba.org/*"
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; upgrade-insecure-requests;"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'none'; base-uri 'none'; form-action 'none'; upgrade-insecure-requests;"
   },
   "optional_host_permissions": [
     "*://*/*",

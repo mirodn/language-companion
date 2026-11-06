@@ -187,7 +187,8 @@
         if (!word || !active()) return;
         event.preventDefault();
         event.stopImmediatePropagation();
-        if (type === "click" && event.button === 0) lookUp(word, event.shiftKey);
+        // Only real clicks, not ones a page script made up (see content.js).
+        if (type === "click" && event.button === 0 && event.isTrusted) lookUp(word, event.shiftKey);
       },
       true,
     );

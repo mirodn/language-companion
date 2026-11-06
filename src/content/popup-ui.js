@@ -23,6 +23,37 @@
     return el;
   }
 
+  // Line icons on a 16×16 grid, drawn with the current text colour.
+  const ICONS = {
+    speaker: ["M3 6h2.5L9 3v10l-3.5-3H3z", "M11.5 5.5a3.5 3.5 0 0 1 0 5", "M13.5 3.5a6.5 6.5 0 0 1 0 9"],
+    close: ["M4 4l8 8", "M12 4l-8 8"],
+    back: ["M10 3L5 8l5 5"],
+    chevron: ["M4 6l4 4 4-4"],
+    pin: ["M6 2h4l-.5 4 2.5 2.5H4L6.5 6z", "M8 8.5V14"],
+    copy: ["M5.5 5.5h7v7h-7z", "M3.5 10.5v-7h7"],
+    check: ["M3 8.5l3 3 7-7"],
+    retry: ["M13 8a5 5 0 1 1-1.5-3.5", "M13 2.5v3h-3"],
+    alert: ["M8 2l6.5 11.5h-13z", "M8 6.5v3", "M8 11.5h.01"],
+  };
+
+  function icon(name) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 16 16");
+    svg.setAttribute("class", "icon");
+    svg.setAttribute("aria-hidden", "true");
+    for (const d of ICONS[name]) {
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", d);
+      svg.append(path);
+    }
+    return svg;
+  }
+
+  // A button showing only an icon; the label is its tooltip and accessible name.
+  function iconButton(name, label, onClick, className = "icon-button") {
+    return h("button", { class: className, title: label, "aria-label": label, onClick }, icon(name));
+  }
+
   // The word with furigana over its kanji when a reading is known.
   function withFurigana(word, reading) {
     return furigana.segments(word, reading).map(({ text, rt }) => (rt ? h("ruby", {}, text, h("rt", {}, rt)) : text));
@@ -48,6 +79,8 @@
       this.pinned = null;
       // Whether the card shows everything (all definitions, kanji, examples). Kept between lookups.
       this.expanded = false;
+      // A speech bubble's sentence view, kept while one of its words is shown, for the Back button.
+      this.back = null;
 
       this.host = document.createElement("language-companion-root");
       this.host.setAttribute("style", "all: initial; position: absolute; top: 0; left: 0; z-index: 2147483647;");
@@ -57,7 +90,8 @@
         "button",
         {
           class: "trigger",
-          title: "Look up with Language Companion",
+          title: "Translate (Alt+Shift+L)",
+          "aria-label": "Translate with Language Companion",
           hidden: true,
           // Keep the page selection when clicking the button.
           onMousedown: (event) => event.preventDefault(),
@@ -121,6 +155,11 @@
       return Boolean(this.state?.editing);
     }
 
+    // A pinned card stays open on clicks outside it; only Close or Esc close it.
+    get isPinned() {
+      return Boolean(this.state && this.pinned);
+    }
+
     contains(target) {
       return target === this.host;
     }
@@ -144,7 +183,7 @@
       this.attach();
       this.trigger.hidden = false;
       const local = this.toLocal(rect);
-      const left = Math.min(local.right + 4, this.bounds().right - 32);
+      const left = Math.min(local.right + 4, this.bounds().right - 36);
       const top = local.bottom + 4;
       this.trigger.style.left = `${left}px`;
       this.trigger.style.top = `${top}px`;
@@ -157,11 +196,20 @@
     // --- Card state ------------------------------------------------------------
 
     // context: optional { pageUrl, pageTitle, tags } overriding the current page, e.g. a video timestamp.
-    open(rect, word, context = {}) {
+    // fromSentence: the word was picked in the speech bubble view, which stays reachable via Back
+    // and keeps the card where it is.
+    open(rect, word, context = {}, { fromSentence = false } = {}) {
       this.hideTrigger();
       this.attach();
-      this.anchor = this.toLocal(rect);
+      if (fromSentence) {
+        if (this.state?.kind === "sentence") this.back = this.state;
+      } else {
+        this.back = null;
+        this.anchor = this.toLocal(rect);
+      }
+      this.show();
       this.state = {
+        kind: "word",
         context,
         status: "loading",
         word,
@@ -175,13 +223,63 @@
         deck: "",
         anki: { state: "idle", message: "" },
       };
+      this.render();
+    }
+
+    // Shows the card, with a short entrance when it wasn't open yet.
+    show() {
+      if (!this.card.hidden) return;
       this.card.hidden = false;
+      this.card.classList.remove("enter");
+      void this.card.offsetWidth;
+      this.card.classList.add("enter");
+    }
+
+    // The text of a speech bubble (image-text.js), whose words can be picked for the word view.
+    // Its text and translation arrive later via the setters below, which take the returned view:
+    // by then the card may show another bubble, or one of this bubble's words.
+    openSentence(rect, { lang, context = {} }) {
+      this.hideTrigger();
+      this.attach();
+      this.back = null;
+      this.anchor = this.toLocal(rect);
+      this.show();
+      this.state = { kind: "sentence", lang, context, text: "", status: "loading", error: "", translation: null, selection: null };
+      this.render();
+      return this.state;
+    }
+
+    setSentenceText(view, text) {
+      Object.assign(view, text ? { text, status: "ready", tokens: null } : { status: "error", error: "No text found in this bubble." });
+      if (this.state === view) this.render();
+    }
+
+    setSentenceTranslation(view, translation) {
+      view.translation = translation;
+      if (this.state === view) this.render();
+    }
+
+    setSentenceError(view, message) {
+      Object.assign(view, { status: "error", error: message });
+      if (this.state === view) this.render();
+    }
+
+    get sentenceShown() {
+      return this.state?.kind === "sentence";
+    }
+
+    // Back from a word to the speech bubble it was picked from.
+    goBack() {
+      if (!this.back) return;
+      this.state = this.back;
+      this.back = null;
       this.render();
     }
 
     close() {
       if (!this.state) return;
       this.state = null;
+      this.back = null;
       this.pinned = null;
       this.card.hidden = true;
       this.card.replaceChildren();
@@ -333,6 +431,11 @@
         else this.close();
         return true;
       }
+      if (this.state.kind === "sentence") return false;
+      if (event.key === "Backspace" && this.back && !typing) {
+        this.goBack();
+        return true;
+      }
       if (event.key === "Enter" && this.options.anki && !["TEXTAREA", "SELECT", "BUTTON", "A"].includes(focused?.tagName)) {
         this.add();
         return true;
@@ -367,47 +470,182 @@
       const s = this.state;
       if (!s) return;
       const body =
-        s.status === "loading"
-          ? [h("div", { class: "header" }, h("div", { class: "word" }, s.word), this.closeButton()), h("div", { class: "loading" }, "Looking up…")]
-          : s.status === "error"
-            ? [h("div", { class: "header" }, h("div", { class: "word" }, s.word), this.closeButton()), h("div", { class: "error" }, s.error)]
-            : s.editing
-              ? this.renderEditor()
-              : this.renderResult();
-      this.card.replaceChildren(
-        ...[...body, s.status === "ready" && this.options.anki && this.renderFooter()].flat().filter((child) => child != null && child !== false),
-      );
+        s.kind === "sentence"
+          ? this.renderSentenceView()
+          : s.status === "loading"
+            ? this.renderLoading()
+            : s.status === "error"
+              ? this.renderError()
+              : s.editing
+                ? this.renderEditor()
+                : this.renderResult();
+      const footer = s.kind === "word" && s.status === "ready" && (this.options.anki ? this.renderFooter() : this.renderHints());
+      this.card.replaceChildren(...[...body, footer].flat().filter((child) => child != null && child !== false));
       this.position();
     }
 
     closeButton() {
-      return h("button", { class: "icon-button", title: "Close (Esc)", onClick: () => this.close() }, "×");
+      return iconButton("close", "Close (Esc)", () => this.close());
+    }
+
+    // The header row, which also moves the card: Back (in a bubble's word), the title, Pin and Close.
+    renderHeader(...title) {
+      const pin = iconButton(
+        "pin",
+        this.pinned ? "Unpin: the card follows the text again" : "Pin the card here: it stays open and in place while you read",
+        () => this.togglePin(),
+        this.pinned ? "icon-button pin pinned" : "icon-button pin",
+      );
+      pin.setAttribute("aria-pressed", String(Boolean(this.pinned)));
+      return h(
+        "div",
+        { class: "header", title: "Drag to move the card" },
+        this.back && iconButton("back", "Back to the speech bubble (Backspace)", () => this.goBack()),
+        h("div", { class: "title" }, title),
+        pin,
+        this.closeButton(),
+      );
+    }
+
+    // A small icon button that copies text and briefly shows a check mark.
+    copyButton(text, label) {
+      const button = iconButton("copy", label, async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          button.replaceChildren(icon("check"));
+          setTimeout(() => button.replaceChildren(icon("copy")), 1200);
+        } catch {
+          // The page may not allow the clipboard; nothing else to do.
+        }
+      }, "icon-button small");
+      return button;
+    }
+
+    // The word right away, and placeholders where the translation and definition will be.
+    renderLoading() {
+      return [
+        this.renderHeader(h("div", { class: "word", lang: this.state.result?.sourceLang }, this.state.word)),
+        h("div", { class: "skeleton", "aria-label": "Looking up…", role: "status" }, h("span", { class: "bar wide" }), h("span", { class: "bar" }), h("span", { class: "bar short" })),
+      ];
+    }
+
+    renderError() {
+      return [
+        this.renderHeader(h("div", { class: "word" }, this.state.word)),
+        h(
+          "div",
+          { class: "problem", role: "alert" },
+          icon("alert"),
+          h("span", {}, this.state.error),
+        ),
+        this.handlers.onRetry && h("button", { class: "button", onClick: () => this.handlers.onRetry() }, icon("retry"), " Try again"),
+      ];
     }
 
     // Compact by default: word, reading, translation, the definitions that will be saved and the
     // sentence. "More" shows the rest: all definitions to choose from, kanji, examples.
     renderResult() {
       const { result } = this.state;
+      const translation = result.translation || (result.sourceLang === result.targetLang ? "" : "—");
       return [
-        h(
-          "div",
-          { class: "header" },
-          h("div", { class: "word" }, withFurigana(result.word, result.reading)),
-          result.ipa && h("span", { class: "ipa" }, result.ipa),
-          h("button", { class: "icon-button", title: "Pronounce (P)", onClick: () => this.playAudio() }, "🔊"),
-          h("span", { class: "spacer" }),
-          this.renderFrequency(),
-          this.renderLanguage(),
-          this.closeButton(),
+        this.renderHeader(
+          h("div", { class: "word", lang: result.sourceLang }, withFurigana(result.word, result.reading)),
+          iconButton("speaker", "Listen (P)", () => this.playAudio()),
         ),
+        h("div", { class: "meta" }, this.renderLanguage(), this.renderFrequency(), result.ipa && h("span", { class: "ipa" }, result.ipa)),
         this.renderBaseForm(),
-        h("div", { class: "translation" }, result.translation || (result.sourceLang === result.targetLang ? "" : "—")),
-        this.state.detailsLoading && h("div", { class: "loading" }, "Loading definitions…"),
+        translation && h("div", { class: "translation" }, h("span", {}, translation), translation !== "—" && this.copyButton(translation, "Copy the translation")),
+        this.state.detailsLoading && h("div", { class: "skeleton compact", "aria-label": "Loading definitions…", role: "status" }, h("span", { class: "bar" }), h("span", { class: "bar short" })),
         this.expanded ? this.renderDefinitionChoices() : this.renderSelectedDefinitions(),
         this.renderSentence(),
         this.expanded && [this.renderKanji(), this.renderExamples(), this.renderWarnings()],
         this.renderMoreToggle(),
       ];
+    }
+
+    // Keyboard hints for the card without Anki, which has no other footer.
+    renderHints() {
+      const hints = [["M", this.expanded ? "less" : "more"], ["P", "listen"], this.state.result.base && ["B", "base form"], this.back && ["⌫", "back"], ["Esc", "close"]];
+      return h(
+        "div",
+        { class: "hints" },
+        hints.filter(Boolean).map(([key, action]) => h("span", {}, h("kbd", {}, key), ` ${action}`)),
+      );
+    }
+
+    // --- Speech bubble view ----------------------------------------------------
+
+    // A bubble's text as words to pick from (click, drag across, Shift+click to extend), and its
+    // translation. Picked words open the word view; Back returns here.
+    renderSentenceView() {
+      const s = this.state;
+      const header = this.renderHeader(h("span", { class: "label" }, "Speech bubble"), h("span", { class: "lang" }, languages.name(s.lang)));
+      if (s.status === "loading") {
+        return [header, h("div", { class: "skeleton", "aria-label": "Reading the bubble…", role: "status" }, h("span", { class: "bar wide" }), h("span", { class: "bar" }))];
+      }
+      if (s.status === "error") return [header, h("div", { class: "problem", role: "alert" }, icon("alert"), h("span", {}, s.error))];
+      s.tokens ??= languages.segmentWords(s.text, s.lang);
+      const tokens = h(
+        "div",
+        { class: "tokens", lang: s.lang, onPointerdown: (event) => this.startPicking(event) },
+        s.tokens.map((token, i) => h("span", { class: token.isWord ? "token word-token" : "token", "data-i": String(i) }, token.text)),
+      );
+      this.tokensElement = tokens;
+      this.highlightPick();
+      return [
+        header,
+        tokens,
+        h(
+          "div",
+          { class: "sentence-translation" },
+          s.translation === null
+            ? h("span", { class: "skeleton inline", "aria-label": "Translating…", role: "status" }, h("span", { class: "bar" }))
+            : [h("span", {}, s.translation || "No translation available."), s.translation && this.copyButton(s.translation, "Copy the translation")],
+        ),
+        h("div", { class: "hints" }, h("span", {}, "Click a word, or drag across words for a phrase. ", h("kbd", {}, "Shift"), " + click extends it.")),
+      ];
+    }
+
+    // Picks a word, or a run of words while the pointer is dragged across them.
+    startPicking(event) {
+      const index = this.tokenIndexAt(event.target);
+      if (index === null || event.button !== 0) return;
+      event.preventDefault();
+      const s = this.state;
+      const anchor = event.shiftKey && s.selection ? s.selection.anchor : index;
+      s.selection = { anchor, from: Math.min(anchor, index), to: Math.max(anchor, index) };
+      this.highlightPick();
+      const element = this.tokensElement;
+      element.setPointerCapture(event.pointerId);
+      const move = (moveEvent) => {
+        const at = this.tokenIndexAt(this.shadow.elementFromPoint(moveEvent.clientX, moveEvent.clientY));
+        if (at === null) return;
+        s.selection = { anchor, from: Math.min(anchor, at), to: Math.max(anchor, at) };
+        this.highlightPick();
+      };
+      const end = () => {
+        element.removeEventListener("pointermove", move);
+        element.removeEventListener("pointerup", end);
+        element.removeEventListener("pointercancel", end);
+        const text = s.tokens.slice(s.selection.from, s.selection.to + 1).map((token) => token.text).join("").trim();
+        if (text && this.state === s) this.handlers.onSentenceSelect?.({ text, sentence: s.text, lang: s.lang, context: s.context });
+      };
+      element.addEventListener("pointermove", move);
+      element.addEventListener("pointerup", end);
+      element.addEventListener("pointercancel", end);
+    }
+
+    tokenIndexAt(target) {
+      const token = target?.closest?.(".token");
+      return token ? Number(token.dataset.i) : null;
+    }
+
+    highlightPick() {
+      const selection = this.state?.selection;
+      for (const token of this.tokensElement?.children ?? []) {
+        const i = Number(token.dataset.i);
+        token.classList.toggle("picked", Boolean(selection) && i >= selection.from && i <= selection.to);
+      }
     }
 
     // The definitions that go on the card, as plain text.
@@ -460,11 +698,11 @@
       const shown = sentenceTranslationShown || this.options.showSentenceTranslation;
       return h(
         "div",
-        { class: "section" },
-        h("div", { class: "sentence" }, highlighted(result.sentence, result.surface || result.word)),
+        { class: "sentence-block" },
+        h("div", { class: "sentence", lang: result.sourceLang }, highlighted(result.sentence, result.surface || result.word)),
         translation &&
           (shown
-            ? h("div", { class: "muted" }, translation)
+            ? h("div", { class: "sentence-translation" }, h("span", {}, translation), this.copyButton(translation, "Copy the sentence translation"))
             : h("button", { class: "reveal", title: "Show the sentence translation (T)", onClick: () => this.showSentenceTranslation() }, "Show translation")),
       );
     }
@@ -520,7 +758,8 @@
       return h(
         "button",
         { class: "more", "aria-expanded": String(this.expanded), title: "Show more or less (M)", onClick: () => this.toggleExpanded() },
-        this.expanded ? "Less" : `More: ${parts.join(" · ")}`,
+        h("span", {}, this.expanded ? "Less" : `More: ${parts.join(" · ")}`),
+        icon("chevron"),
       );
     }
 
@@ -596,7 +835,7 @@
           h(multiline ? "textarea" : "input", { value: result[key] ?? "", rows: multiline ? 3 : null, onInput: (event) => (result[key] = event.target.value) }),
         );
       return [
-        h("div", { class: "header" }, h("div", { class: "word" }, "Edit card"), h("span", { class: "spacer" }), this.closeButton()),
+        this.renderHeader(h("div", { class: "word" }, "Edit card")),
         field("Word", "word"),
         field("Translation", "translation"),
         result.sourceLang === "ja" ? field("Reading (furigana)", "reading") : field("Pronunciation", "ipa"),
@@ -667,6 +906,8 @@
         this.position();
       };
       const end = () => {
+        // A moved card is pinned, which the pin button shows.
+        if (this.card.classList.contains("dragging")) this.render();
         this.card.classList.remove("dragging");
         this.card.removeEventListener("pointermove", move);
         this.card.removeEventListener("pointerup", end);
@@ -681,7 +922,15 @@
     // Back to its place next to the selection.
     unpin() {
       this.pinned = null;
-      this.position();
+      this.render();
+    }
+
+    // Pins the card where it is now, or lets it follow the text again.
+    togglePin() {
+      if (this.pinned) return this.unpin();
+      const { left, top } = this.card.getBoundingClientRect();
+      this.pinned = { left, top };
+      this.render();
     }
 
     // Places the card where the user dragged it, or else below the selection (above it if there

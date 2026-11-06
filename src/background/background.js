@@ -6,6 +6,7 @@ import { createFrequency } from "./frequency.js";
 import { getCached, setCached } from "./cache.js";
 import { flushQueue, loadLog, logAdded, queueNote, removeEntry } from "./word-log.js";
 import * as ocr from "./ocr.js";
+import { allowed } from "./senders.js";
 
 const { MSG, settings: settingsStore } = globalThis.LC;
 
@@ -14,7 +15,10 @@ const { MSG, settings: settingsStore } = globalThis.LC;
 browser.runtime.onInstalled.addListener(({ reason }) => {
   setupMenus();
   if (reason === "install") browser.tabs.create({ url: browser.runtime.getURL("src/welcome/welcome.html") });
-  if (reason === "update") keepAnkiForExistingUsers();
+  if (reason === "update") {
+    keepAnkiForExistingUsers();
+    ocr.dropOldModels().catch(() => {});
+  }
 });
 
 // Saving to Anki became optional and off by default in 0.5. Users who already saved words or
@@ -136,16 +140,37 @@ const lookupContext = {
   frequency: createFrequency(),
 };
 
+// Upper limits for what is sent to translators, whatever the selection length setting says, so a
+// page can't have its whole text sent.
+const MAX_TEXT_LENGTH = 1000; // The largest "Max. selection length" in the settings.
+const MAX_SENTENCE_LENGTH = 1000;
+
+function checkLookup({ text, sentence }) {
+  if (typeof text !== "string" || !text.trim() || text.length > MAX_TEXT_LENGTH) throw new Error("Invalid text to look up.");
+  if (sentence != null && (typeof sentence !== "string" || sentence.length > MAX_SENTENCE_LENGTH)) {
+    throw new Error("Invalid sentence.");
+  }
+}
+
+function checkCard(card) {
+  if (typeof card?.word !== "string" || !card.word.trim() || !Array.isArray(card.definitions ?? [])) {
+    throw new Error("Invalid card.");
+  }
+}
+
 const handlers = {
   async [MSG.LOOKUP](message) {
+    checkLookup(message);
     return lookupTranslation(message, await settingsStore.getSettings(), lookupContext);
   },
 
   async [MSG.PEEK](message) {
+    checkLookup(message);
     return peekWord(message, await settingsStore.getSettings(), lookupContext);
   },
 
   async [MSG.LOOKUP_DETAILS](message) {
+    checkLookup(message);
     return lookupDetails(message, await settingsStore.getSettings(), lookupContext);
   },
 
@@ -184,12 +209,14 @@ const handlers = {
   },
 
   async [MSG.ANKI_CHECK_DUPLICATE]({ card }) {
+    checkCard(card);
     const { client, settings } = await anki();
     await ensureNoteType(client, settings);
     return client.checkNote(buildNote(card, settings));
   },
 
   async [MSG.ANKI_ADD_NOTE]({ card }) {
+    checkCard(card);
     const { client, settings } = await anki();
     const note = buildNote(card, settings);
     try {
@@ -208,6 +235,7 @@ const handlers = {
   },
 
   async [MSG.ANKI_BROWSE]({ card }) {
+    checkCard(card);
     const { client, settings } = await anki();
     return client.browse(duplicateQuery(card, settings));
   },
@@ -236,10 +264,14 @@ browser.permissions.onAdded.addListener(async ({ origins = [] }) => {
   }
 });
 
+const senderInfo = { id: browser.runtime.id, baseUrl: browser.runtime.getURL("") };
+
 // Every response is { ok: true, data } or { ok: false, error } so callers get readable errors.
 browser.runtime.onMessage.addListener((message, sender) => {
   const handler = handlers[message?.type];
   if (!handler) return undefined;
+  // Content scripts run on every site and only get what the card needs (see senders.js).
+  if (!allowed(message.type, sender, senderInfo)) return Promise.resolve({ ok: false, error: "Not allowed." });
   return Promise.resolve(handler(message, sender)).then(
     (data) => ({ ok: true, data }),
     (error) => {
