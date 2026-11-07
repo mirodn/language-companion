@@ -4,6 +4,8 @@ All notable changes to Language Companion. The format follows [Keep a Changelog]
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-07
+
 Language Companion now focuses on understanding Japanese and Korean. Translating comes first; saving to Anki is optional.
 
 ### Reading and watching

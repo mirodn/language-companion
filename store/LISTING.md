@@ -89,7 +89,7 @@ Dictionaries: Jisho, KANJIDIC2, Wiktionary, Tatoeba, FrequencyWords. Text recogn
 
 **Release notes for 0.5.0:**
 
-> Now focused on translating Japanese and Korean. New: text in manga and webtoons (Shonen Jump+ and any site you turn on): click a speech bubble for its text and translation, select words in it. The card updates in place and can be dragged anywhere. Saving to Anki is now optional (off for new users, kept on if you used it). Chinese support was removed.
+> Now focused on translating Japanese and Korean. New: text in manga and webtoons (Shonen Jump+ and any site you turn on): click a speech bubble for its text and translation, select words in it. The card updates in place and can be dragged anywhere. Text recognition only runs while a manga page is on screen, and links stay clickable: a plain click never brings up the translator. Saving to Anki is now optional (off for new users, kept on if you used it). Safer: web pages can no longer drive the extension with made-up clicks, and downloaded models are verified. Chinese support was removed.
 
 ## Notes to reviewer
 
@@ -100,7 +100,7 @@ How to test:
 3. Toolbar button → "Open in reader" shows the article with clickable words. Hold Shift over a word for a tooltip.
 4. Text in images: open a chapter on https://shonenjumpplus.com, click the toolbar button and turn on "Read text in images". Firefox asks for access to all websites: captureVisibleTab only works without a user gesture with <all_urls>. Outlines appear over speech bubbles; click one for its text.
 
-Text in images: the visible tab is captured only on sites the user turned on, processed locally with ONNX models and never stored or sent. The models (PaddleOCR PP-OCRv5 and manga-ocr, Apache-2.0) are data, downloaded once from huggingface.co at pinned revisions and kept in the Cache API. They are not code.
+Text in images: the visible tab is captured only on sites the user turned on, processed locally with ONNX models and never stored or sent. The models (PaddleOCR PP-OCRv5 and manga-ocr, Apache-2.0) are data, downloaded once from huggingface.co at pinned revisions, checked against their SHA-256 and kept in the Cache API. They are not code.
 
 Third-party code:
 - src/vendor/readability/Readability.js is Mozilla Readability 0.6.0, unmodified (Apache-2.0). The two innerHTML lint warnings come from it.
@@ -127,6 +127,10 @@ Run in a fresh profile with the built zip:
 - [ ] Toolbar → Open in reader on a news article; click words; Shift peek
 - [ ] YouTube with Japanese subtitles: click a subtitle word → video pauses → card → close → video resumes
 - [ ] Shonen Jump+ chapter: toolbar switch → permission → "Getting text recognition ready…" → outlines on bubbles; the download shows MB progress; click a bubble → the card shows its text and translation; click/drag words → word view with ← back to the bubble; clicking a bubble doesn't turn the page; turning the page clears and rescans
+- [ ] Shonen Jump+ home page and other pages without a manga page: no outlines, no "Getting text recognition ready…"; the viewer's arrows get no outline
+- [ ] Shonen Jump+ chapter: hold Ctrl or ⌘ and click a bubble → the click reaches the page
+- [ ] Normal page: click a link → nothing from the extension appears, the link opens. Select text → the 文A button shows and disappears after 4 seconds, but stays while the pointer is on it
+- [ ] Reader: click a word in a link → the card shows "Open link ↗", which opens the link in a new tab
 - [ ] Settings → turn on "Save words to Anki" (Anki open) → deck menus appear; card gets deck menu and Add to Anki; Enter adds; same word again says "Already in deck"
 - [ ] With Anki on, quit Anki → card says "Anki is closed" → "Save for later" → reopen Anki → within 2 minutes the note appears
 - [ ] Dark mode (system) looks right on the card (word and bubble views), the corner notes, the toolbar menu, reader, setup and settings pages

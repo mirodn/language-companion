@@ -1,6 +1,6 @@
 {
   "name": "language-companion",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "license": "MIT",
   "description": "Firefox extension for learning languages while browsing, with Anki integration via AnkiConnect.",

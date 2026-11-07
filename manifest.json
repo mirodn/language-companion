@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Language Companion",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Understand Japanese and Korean while you browse: translate words and sentences on any page, in manga, in a reader view or in YouTube subtitles. Optionally save them to Anki.",
   "homepage_url": "https://github.com/mirodn/language-companion",
   "browser_specific_settings": {
