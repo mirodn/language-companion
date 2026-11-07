@@ -51,41 +51,25 @@ npx web-ext sign --channel=listed --api-key=$AMO_JWT_ISSUER --api-secret=$AMO_JW
 **Description:**
 
 ```
-Language Companion helps you understand Japanese and Korean in real content: news, blogs, novels, manga and YouTube. Select a word or a sentence and see what it means right there, without leaving the page.
+Language Companion helps you understand Japanese and Korean in real content. Select a word or a sentence and see what it means right there, without leaving the page.
 
-<b>Translate what you read</b>
-• Translation, reading and the main definition at a glance, plus the translation of the whole sentence
-• Furigana for Japanese
-• Conjugated words lead to their dictionary form: 食べました → 食べる, 갔어요 → 가다, 학교에 → 학교
-• Kanji breakdown: 学校 → 学 study · 校 school
-• JLPT level or word frequency ("Top 2k"), so you know what is worth learning first
-• Select the next word and the same card updates; drag it anywhere on screen while you read
+• Translation, reading, dictionary form and kanji, plus the translation of the whole sentence
+• Manga and webtoons: click a speech bubble to read and translate its text
+• A calm reader view for articles, and clickable YouTube subtitles
+• Optional: save words to Anki in one click
 
-<b>Manga and webtoons</b>
-On sites like Shonen Jump+, click a speech bubble to see its text and translation, then click or drag across words to look them up. The text is recognised on your computer: Japanese with manga-ocr, which was trained on manga, Korean with PaddleOCR. On by default for Shonen Jump+, one switch for other sites.
+No account, no tracking. Text in images is recognised on your computer.
 
-<b>Reader</b>
-Open any article in a calm reader view where every word is clickable. This helps most with Japanese, where words have no spaces between them. Hold Shift over a word for a quick peek at its reading and meaning.
-
-<b>YouTube</b>
-Click a word in the subtitles. The video pauses, the card opens, and the subtitle line becomes the sentence.
-
-<b>Optional: Anki</b>
-Turn it on to save words as flashcards in one click, with the sentence, reading, audio and a link back to the page. A deck per language, duplicate detection, and notes wait while Anki is closed. Needs Anki Desktop with the free AnkiConnect add-on.
-
-<b>Privacy</b>
-No account, no tracking, no server of its own. Only what you look up goes to the dictionary and translation services you turn on. Text in images is recognised on your computer, and screenshots are never saved or sent.
-
-Dictionaries: Jisho, KANJIDIC2, Wiktionary, Tatoeba, FrequencyWords. Text recognition: manga-ocr, PaddleOCR. Thanks to their authors.
+Data: Jisho, KANJIDIC2, Wiktionary, Tatoeba, FrequencyWords. Text recognition: manga-ocr, PaddleOCR.
 ```
 
 **Privacy policy:** paste the contents of `PRIVACY.md` (with `https://github.com/mirodn/language-companion` filled in).
 
 **Screenshot captions:**
 
-1. `1-japanese-reader.png`: Click any word in the reader: reading, dictionary form and meaning at a glance.
-2. `3-korean-page.png`: Works on any page. Korean verbs lead to their dictionary form.
-3. To do: a manga page with a speech bubble open in the card (text, translation, a picked word).
+1. `1-japanese-reader.png`: Reader view: reading, dictionary form and meaning at a glance.
+2. `2-manga-bubble.png`: Click a speech bubble to read and translate its text. The page is our own drawing.
+3. `3-korean-page.png`: Works on any page. Korean verbs lead to their dictionary form.
 
 **Release notes for 0.5.0:**
 
