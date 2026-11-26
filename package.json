@@ -20,6 +20,6 @@
   "devDependencies": {
     "kuromoji": "0.1.2",
     "onnxruntime-web": "1.31.1",
-    "web-ext": "^8.3.0"
+    "web-ext": "^10.8.0"
   }
 }
