@@ -7,6 +7,7 @@ All notable changes to Language Companion. The format follows [Keep a Changelog]
 ### Fixed
 
 - The quick peek tooltip (Shift over a word) now disappears when Shift is released; before, it stayed on screen until the next peek
+- A noun's other reading is no longer shown as its base form. Shift over 今日 shows きょう, not きょう → こんにち
 
 ## [0.6.0] - 2026-11-21
 

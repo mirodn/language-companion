@@ -10,7 +10,7 @@ import { parse as parseJisho } from "../src/background/providers/jisho.js";
 import wiktionary from "../src/background/providers/wiktionary.js";
 import { stripParticle, verbCandidates } from "../src/background/korean.js";
 import kanjidic, { parseFile as parseKanjidic } from "../src/background/providers/kanjidic.js";
-import { isPhrase, lookupDetails, lookupTranslation, resolveSourceLang } from "../src/background/lookup.js";
+import { isPhrase, lookupDetails, lookupTranslation, peekWord, resolveSourceLang } from "../src/background/lookup.js";
 import { createFrequency, frequencyLabel } from "../src/background/frequency.js";
 import "../src/shared/settings.js";
 import "../src/shared/furigana.js";
@@ -203,6 +203,65 @@ test("Wiktionary finds the base form of an inflected word", () => {
   assert.equal(parseWiktionary(romaji, "ja").base, null);
 });
 
+// 今日 is a noun with two readings. Wiktionary marks こんにち as an "alternative form", which is
+// another spelling, not a dictionary form the way 食べた is a form of 食べる.
+const KYOU_WIKTIONARY = {
+  ja: [
+    {
+      partOfSpeech: "Noun",
+      definitions: [
+        { definition: '<a href="/wiki/today" title="today">today</a>, <a href="/wiki/this" title="this">this</a> <a href="/wiki/day" title="day">day</a>' },
+        {
+          definition:
+            '<span class="form-of-definition">alternative form of <span class="form-of-definition-link"><i class="Jpan mention" lang="ja"><a href="/wiki/%E3%81%93%E3%82%93%E3%81%AB%E3%81%A1#Japanese" title="こんにち">こんにち</a></i></span></span>',
+        },
+      ],
+    },
+  ],
+};
+const KYOU_JISHO = {
+  data: [
+    {
+      japanese: [
+        { word: "今日", reading: "きょう" },
+        { word: "今日", reading: "こんにち" },
+      ],
+      senses: [{ english_definitions: ["today", "this day"], parts_of_speech: ["Noun", "Adverb (fukushi)"] }],
+    },
+  ],
+};
+
+test("Wiktionary does not treat a noun's alternative form as a base form", () => {
+  const parsed = parseWiktionary(KYOU_WIKTIONARY, "ja");
+  assert.equal(parsed.base, null);
+  assert.equal(parsed.definitions[0].text, "today, this day");
+  assert.match(parsed.definitions[1].text, /^alternative form of こんにち/);
+  assert.equal(parsed.definitions[1].formOf, "こんにち");
+});
+
+test("quick peek of a noun shows its reading and not another reading as a base form", async () => {
+  const fetch = async (url) => {
+    const body = url.includes("jisho.org") ? KYOU_JISHO : url.includes("wiktionary.org") ? KYOU_WIKTIONARY : null;
+    if (!body) return { ok: false, status: 404, json: async () => ({}) };
+    return { ok: true, status: 200, json: async () => body };
+  };
+  const peek = await peekWord({ text: "今日", sourceLang: "ja", pageLang: "ja" }, DEFAULTS, { fetch, kanjidic: new Map() });
+  assert.equal(peek.word, "今日");
+  assert.equal(peek.reading, "きょう");
+  assert.equal(peek.base, "");
+  assert.equal(peek.meaning, "today; this day");
+});
+
+test("quick peek still shows the dictionary form of a conjugated verb", async () => {
+  const fetch = async (url) => {
+    if (url.includes("jisho.org")) return { ok: true, status: 200, json: async () => fixture("jisho-tabeta") };
+    return { ok: false, status: 404, json: async () => ({}) };
+  };
+  const peek = await peekWord({ text: "食べた", sourceLang: "ja" }, DEFAULTS, { fetch, kanjidic: new Map() });
+  assert.equal(peek.base, "食べる");
+  assert.equal(peek.reading, "たべた");
+});
+
 test("Wiktionary shows the base word's definitions for an inflected form", async () => {
   const urls = [];
   const pages = {
@@ -217,6 +276,44 @@ test("Wiktionary shows the base word's definitions for an inflected form", async
   assert.deepEqual(urls, ["courait", "courir"]);
   assert.deepEqual(result.definitions, [{ pos: "Verb", text: "to run" }]);
   assert.equal(result.base.word, "courir");
+});
+
+test("Wiktionary follows an alternative spelling to its definitions without setting a base form", async () => {
+  const urls = [];
+  const pages = {
+    Photographie: {
+      de: [
+        {
+          partOfSpeech: "Noun",
+          definitions: [
+            {
+              definition:
+                '<span class="form-of-definition">alternative spelling of <span class="form-of-definition-link"><i class="Latn mention" lang="de"><a href="/wiki/Fotografie#German" title="Fotografie">Fotografie</a></i></span></span>',
+            },
+          ],
+        },
+      ],
+    },
+    Fotografie: {
+      de: [
+        {
+          partOfSpeech: "Noun",
+          definitions: [{ definition: "photography" }, { definition: "photograph" }],
+        },
+      ],
+    },
+  };
+  const fetch = async (url) => {
+    urls.push(decodeURIComponent(url.split("/").pop()));
+    return { ok: true, status: 200, json: async () => pages[urls.at(-1)] };
+  };
+  const result = await wiktionary.lookup({ text: "Photographie", src: "de" }, DEFAULTS, { fetch });
+  assert.deepEqual(urls, ["Photographie", "Fotografie"]);
+  assert.deepEqual(result.definitions, [
+    { pos: "Noun", text: "photography" },
+    { pos: "Noun", text: "photograph" },
+  ]);
+  assert.equal(result.base, null);
 });
 
 test("Jisho finds the dictionary form of a conjugated word, with its JLPT level", () => {

@@ -16,10 +16,11 @@ export default {
     for (const word of candidates) {
       const result = parse(await fetchPage(this.id, word, ctx), src);
       if (!result.definitions.length) continue;
-      // An inflected form ("courait") only says what it is a form of; the meanings are on the
-      // base word's page, so show those instead.
-      if (result.base && result.definitions.every((def) => def.formOf)) {
-        const base = parse(await fetchPage(this.id, result.base.word, ctx), src);
+      // An inflected form ("courait") or alternative spelling ("Photographie") only says what it
+      // is a form of; the meanings are on the linked word's page, so show those instead.
+      if (result.definitions.every((def) => def.formOf)) {
+        const linked = result.base?.word ?? result.definitions[0].formOf;
+        const base = parse(await fetchPage(this.id, linked, ctx), src);
         if (base.definitions.length) return { ...base, base: result.base, examples: [...base.examples, ...result.examples] };
       }
       return result;
@@ -58,6 +59,7 @@ function fetchPage(id, word, ctx) {
 const FORM_OF_LINK = /class="form-of-definition-link"[^>]*>(?:<[^>]+>)*?<a [^>]*title="([^"]+)"/;
 
 // base: { word, formOf } for an inflected form, e.g. { word: "courir", formOf: "third-person … of courir" }.
+// Another spelling of the same word is not one: a romanization, or "alternative form of こんにち" on 今日.
 export function parse(data, src) {
   const definitions = [];
   const examples = [];
@@ -67,9 +69,12 @@ export function parse(data, src) {
     const romanization = /romanization/i.test(entry.partOfSpeech ?? "");
     for (const def of entry.definitions ?? []) {
       const text = stripHtml(def.definition);
-      const baseWord = romanization ? null : stripHtml(FORM_OF_LINK.exec(def.definition ?? "")?.[1]);
+      const linked = stripHtml(FORM_OF_LINK.exec(def.definition ?? "")?.[1]);
+      const alternativeForm = /^alternative (?:form|spelling) of\b/i.test(text);
+      const followWord = romanization ? null : linked;
+      const baseWord = alternativeForm ? null : followWord;
       base ??= baseWord ? { word: baseWord, formOf: text } : null;
-      if (text) definitions.push({ pos: entry.partOfSpeech ?? "", text, ...(baseWord ? { formOf: baseWord } : {}) });
+      if (text) definitions.push({ pos: entry.partOfSpeech ?? "", text, ...(followWord ? { formOf: followWord } : {}) });
       for (const example of def.parsedExamples ?? []) {
         const sentence = stripHtml(example.example);
         if (sentence) examples.push({ text: sentence, translation: stripHtml(example.translation), source: "Wiktionary" });
